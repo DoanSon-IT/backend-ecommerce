@@ -8,7 +8,6 @@ COPY mvnw pom.xml ./
 RUN ./mvnw dependency:go-offline
 
 COPY src ./src
-COPY application.properties ./src/main/resources/
 
 RUN ./mvnw clean package -DskipTests
 
