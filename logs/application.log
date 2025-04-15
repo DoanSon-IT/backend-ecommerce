@@ -1419,3 +1419,36 @@
 2025-04-15T15:28:11.945+07:00  INFO 11460 --- [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
 2025-04-15T15:28:11.948+07:00  INFO 11460 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
 2025-04-15T15:28:11.966+07:00  INFO 11460 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2025-04-15T17:55:41.522+07:00  INFO 11440 --- [main] com.sondv.phone.PhoneApplication         : Starting PhoneApplication using Java 17.0.12 with PID 11440 (D:\ecommerce_phone\be_ecommerce_phone\target\classes started by doanv in D:\ecommerce_phone\be_ecommerce_phone)
+2025-04-15T17:55:41.526+07:00 DEBUG 11440 --- [main] com.sondv.phone.PhoneApplication         : Running with Spring Boot v3.2.2, Spring v6.1.3
+2025-04-15T17:55:41.526+07:00  INFO 11440 --- [main] com.sondv.phone.PhoneApplication         : The following 1 profile is active: "dev"
+2025-04-15T17:55:43.924+07:00  INFO 11440 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2025-04-15T17:55:43.928+07:00  INFO 11440 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-04-15T17:55:44.183+07:00  INFO 11440 --- [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 239 ms. Found 16 JPA repository interfaces.
+2025-04-15T17:55:44.723+07:00  INFO 11440 --- [main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=dea03d0a-0ef5-3c9e-ae30-ab29091c180b
+2025-04-15T17:55:45.840+07:00  INFO 11440 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-04-15T17:55:45.859+07:00  INFO 11440 --- [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-04-15T17:55:45.859+07:00  INFO 11440 --- [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.18]
+2025-04-15T17:55:46.023+07:00  INFO 11440 --- [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-04-15T17:55:46.023+07:00  INFO 11440 --- [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 4418 ms
+2025-04-15T17:55:46.802+07:00  INFO 11440 --- [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-04-15T17:55:46.900+07:00  INFO 11440 --- [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
+2025-04-15T17:55:46.978+07:00  INFO 11440 --- [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-04-15T17:55:47.340+07:00  INFO 11440 --- [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-04-15T17:55:47.373+07:00  INFO 11440 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-04-15T17:55:48.622+07:00  INFO 11440 --- [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@7f49df25
+2025-04-15T17:55:48.625+07:00  INFO 11440 --- [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-04-15T17:55:48.833+07:00  WARN 11440 --- [main] org.hibernate.orm.deprecation            : HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-04-15T17:55:48.835+07:00  WARN 11440 --- [main] org.hibernate.orm.deprecation            : HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2025-04-15T17:55:51.027+07:00  INFO 11440 --- [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-04-15T17:55:51.326+07:00  INFO 11440 --- [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-04-15T17:55:52.035+07:00  INFO 11440 --- [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-04-15T17:55:52.822+07:00 DEBUG 11440 --- [main] c.s.p.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2025-04-15T17:55:55.220+07:00  WARN 11440 --- [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-04-15T17:55:55.863+07:00  INFO 11440 --- [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint(s) beneath base path '/actuator'
+2025-04-15T17:55:56.043+07:00  INFO 11440 --- [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@3eed7564, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@6ffe7432, org.springframework.security.web.context.SecurityContextHolderFilter@3f14d372, org.springframework.security.web.header.HeaderWriterFilter@78509083, org.springframework.web.filter.CorsFilter@7bed2ec1, org.springframework.security.web.authentication.logout.LogoutFilter@5cd0b9d6, org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter@15e5c42c, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter@185ea2dd, com.sondv.phone.security.RateLimitFilter@6472dd0c, com.sondv.phone.security.JwtAuthenticationFilter@2c5b2d62, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@64a65c71, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@75b4d46d, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@7e6ebf10, org.springframework.security.web.session.SessionManagementFilter@7540a6f3, org.springframework.security.web.access.ExceptionTranslationFilter@2a4b35a0, org.springframework.security.web.access.intercept.AuthorizationFilter@69e91dc1]
+2025-04-15T17:55:57.764+07:00  INFO 11440 --- [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2025-04-15T17:55:57.947+07:00  INFO 11440 --- [main] com.sondv.phone.PhoneApplication         : Started PhoneApplication in 17.255 seconds (process running for 18.411)
+2025-04-15T17:56:15.489+07:00  INFO 11440 --- [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-04-15T17:56:15.518+07:00  INFO 11440 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-04-15T17:56:15.532+07:00  INFO 11440 --- [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
