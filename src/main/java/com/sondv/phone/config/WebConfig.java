@@ -15,7 +15,7 @@ public class WebConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // có thể để /api/** nếu bạn muốn giới hạn
+                registry.addMapping("/**")
                         .allowedOrigins(frontendUrl)
                         .allowedMethods("*")
                         .allowedHeaders("*")
