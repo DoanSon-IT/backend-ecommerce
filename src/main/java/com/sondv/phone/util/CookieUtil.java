@@ -3,24 +3,43 @@ package com.sondv.phone.util;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Optional;
 
 public class CookieUtil {
+
+    private static boolean isProduction() {
+        String env = System.getenv("ENVIRONMENT");
+        return "production".equalsIgnoreCase(env);
+    }
+
+    // ✅ Hàm chính đầy đủ tham số
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge, boolean httpOnly, String sameSite) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(httpOnly);
+        cookie.setSecure(isProduction()); // chỉ bật secure ở môi trường production
         cookie.setPath("/");
         cookie.setMaxAge(maxAge);
-        cookie.setSecure(false); // False cho local (http), true cho production (https)
-        // Thêm SameSite vào header Set-Cookie
-        response.addHeader("Set-Cookie", String.format("%s=%s; Path=/; Max-Age=%d; %sSameSite=%s",
-                name, value, maxAge, httpOnly ? "HttpOnly; " : "", sameSite));
+
+        StringBuilder cookieHeader = new StringBuilder();
+        cookieHeader.append(String.format("%s=%s; Path=/; Max-Age=%d; ", name, value, maxAge));
+        if (httpOnly) cookieHeader.append("HttpOnly; ");
+        if (isProduction()) cookieHeader.append("Secure; ");
+        cookieHeader.append("SameSite=").append(sameSite);
+
+        response.addHeader("Set-Cookie", cookieHeader.toString());
         response.addCookie(cookie);
     }
 
-    // Giữ phương thức cũ với 4 tham số làm mặc định
+    // ✅ Dùng khi muốn default: HttpOnly=true, SameSite auto theo môi trường
+    public static void addCookie(HttpServletResponse response, String name, String value, int maxAge, boolean httpOnly) {
+        String sameSite = isProduction() ? "None" : "Lax";
+        addCookie(response, name, value, maxAge, httpOnly, sameSite);
+    }
+
+    // ✅ Mặc định gọn nhất
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
-        addCookie(response, name, value, maxAge, true, "Lax"); // Mặc định HttpOnly=true, SameSite=Lax
+        addCookie(response, name, value, maxAge, true);
     }
 
     public static Optional<String> getCookieValue(HttpServletRequest request, String name) {
@@ -37,11 +56,16 @@ public class CookieUtil {
 
     public static void clearCookie(HttpServletResponse response, String name) {
         Cookie cookie = new Cookie(name, null);
-        cookie.setPath("/");
         cookie.setHttpOnly(true);
+        cookie.setSecure(isProduction());
+        cookie.setPath("/");
         cookie.setMaxAge(0);
-        // Xóa cookie với SameSite=None
-        response.addHeader("Set-Cookie", String.format("%s=; Path=/; Max-Age=0; HttpOnly; SameSite=None", name));
+
+        StringBuilder clearHeader = new StringBuilder();
+        clearHeader.append(String.format("%s=; Path=/; Max-Age=0; HttpOnly; ", name));
+        clearHeader.append(isProduction() ? "Secure; SameSite=None" : "SameSite=Lax");
+
+        response.addHeader("Set-Cookie", clearHeader.toString());
         response.addCookie(cookie);
     }
 }
