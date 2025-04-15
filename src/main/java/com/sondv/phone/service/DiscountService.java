@@ -1,4 +1,3 @@
-// DiscountService.java (fix lỗi OffsetDateTime + bỏ hàm không cần thiết)
 package com.sondv.phone.service;
 
 import com.sondv.phone.dto.DiscountApplyRequest;

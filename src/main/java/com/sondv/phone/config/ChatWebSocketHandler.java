@@ -30,7 +30,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final MessageService messageService;
 
-    @Value("${jwt.secret}")
+    @Value("${JWT_SECRET}")
     private String secretKey;
 
     private final Map<String, WebSocketSession> sessions = new HashMap<>();
