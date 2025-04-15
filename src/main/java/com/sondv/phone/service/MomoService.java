@@ -18,22 +18,22 @@ import java.util.*;
 @RequiredArgsConstructor
 public class MomoService {
 
-    @Value("${momo.partnerCode}")
+    @Value("${MOMO_PARTNER_CODE}")
     private String partnerCode;
 
-    @Value("${momo.accessKey}")
+    @Value("${MOMO_ACCESS_KEY}")
     private String accessKey;
 
-    @Value("${momo.secretKey}")
+    @Value("${MOMO_SECRET_KEY}")
     private String secretKey;
 
-    @Value("${momo.requestUrl}")
+    @Value("${MOMO_REQUEST_URL}")
     private String requestUrl;
 
-    @Value("${momo.returnUrl}")
+    @Value("${MOMO_RETURN_URL}")
     private String returnUrl;
 
-    @Value("${momo.notifyUrl}")
+    @Value("${MOMO_NOTIFY_URL}")
     private String notifyUrl;
 
     public String createMomoPayment(Long orderId, Double amount) {

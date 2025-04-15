@@ -13,10 +13,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OpenAiClient {
 
-    @Value("${groq.api.key}")
+    @Value("${GROQ_API_KEY}")
     private String groqApiKey;
 
-    @Value("${groq.api.url}")
+    @Value("${GROQ_API_KEY}")
     private String groqApiUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();

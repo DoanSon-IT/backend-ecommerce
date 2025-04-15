@@ -12,19 +12,19 @@ import java.util.*;
 @RequiredArgsConstructor
 public class VNPayService {
 
-    @Value("${vnpay.tmnCode}")
+    @Value("${VNPAY_TMN_CODE}")
     private String vnpTmnCode;
 
-    @Value("${vnpay.hashSecret}")
+    @Value("${VNPAY_HASH_SECRET}")
     private String vnpHashSecret;
 
-    @Value("${vnpay.payUrl}")
+    @Value("${VNPAY_PAY_URL}")
     private String vnpPayUrl;
 
-    @Value("${vnpay.returnUrl}")
+    @Value("${VNPAY_RETURN_URL}")
     private String vnpReturnUrl;
 
-    @Value("${vnpay.version}")
+    @Value("${VNPAY_VERSION}")
     private String vnpVersion;
 
     public String createVNPayPayment(Long orderId, Double amount) {

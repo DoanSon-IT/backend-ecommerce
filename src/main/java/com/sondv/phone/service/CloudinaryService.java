@@ -18,10 +18,10 @@ import java.util.Map;
 public class CloudinaryService {
     private static final Logger logger = LoggerFactory.getLogger(CloudinaryService.class);
 
-    @Value("${cloudinary.upload_url}")
+    @Value("${CLOUDINARY_UPLOAD_URL}")
     private String CLOUDINARY_UPLOAD_URL;
 
-    @Value("${cloudinary.upload_preset}")
+    @Value("${CLOUDINARY_UPLOAD_PRESET}")
     private String CLOUDINARY_UPLOAD_PRESET;
 
     private final RestTemplate restTemplate;
