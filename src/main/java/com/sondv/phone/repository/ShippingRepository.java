@@ -1,6 +1,6 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.ShippingInfo;
+import com.sondv.phone.entity.ShippingInfo;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

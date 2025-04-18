@@ -10,7 +10,6 @@ public class WebConfig {
 
     @Bean
     public WebMvcConfigurer corsConfigurer(@Value("${frontend.url:http://localhost:3000}") String frontendUrl) {
-        System.out.println("✅ CORS allowed origin: " + frontendUrl);
 
         return new WebMvcConfigurer() {
             @Override

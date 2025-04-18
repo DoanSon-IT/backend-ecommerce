@@ -1,7 +1,7 @@
 package com.sondv.phone.security.oauth2.handler;
 
-import com.sondv.phone.model.AuthProvider;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.AuthProvider;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.UserRepository;
 import com.sondv.phone.security.JwtUtil;
 import com.sondv.phone.security.oauth2.user.CustomOAuth2User;

@@ -2,7 +2,7 @@ package com.sondv.phone.service;
 
 import com.sondv.phone.dto.AuthRequest;
 import com.sondv.phone.exception.ApiException;
-import com.sondv.phone.model.*;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
 import com.sondv.phone.security.JwtUtil;
 import lombok.RequiredArgsConstructor;

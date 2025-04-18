@@ -1,7 +1,7 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.Order;
-import com.sondv.phone.model.OrderStatus;
+import com.sondv.phone.entity.Order;
+import com.sondv.phone.entity.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

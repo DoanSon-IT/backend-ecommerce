@@ -1,8 +1,8 @@
 package com.sondv.phone.service;
 
 import com.sondv.phone.dto.ChatResponse;
-import com.sondv.phone.model.Message;
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Message;
+import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.MessageRepository;
 import com.sondv.phone.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;

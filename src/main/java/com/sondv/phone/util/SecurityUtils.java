@@ -1,6 +1,6 @@
 package com.sondv.phone.util;
 
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.User;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 public class SecurityUtils {

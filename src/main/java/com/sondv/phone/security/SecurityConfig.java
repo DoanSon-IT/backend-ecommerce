@@ -100,6 +100,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/discounts/active").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/discounts/spin").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/discounts/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
 
                         // 🔒 Cần đăng nhập để áp mã
                         .requestMatchers(HttpMethod.POST, "/api/discounts/apply-discount").authenticated()

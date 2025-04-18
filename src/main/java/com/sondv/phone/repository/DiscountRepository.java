@@ -1,6 +1,6 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.Discount;
+import com.sondv.phone.entity.Discount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

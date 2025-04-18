@@ -1,7 +1,7 @@
 package com.sondv.phone.controller;
 
-import com.sondv.phone.model.Message;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Message;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.UserRepository;
 import com.sondv.phone.security.JwtUtil;
 import com.sondv.phone.service.CloudinaryService;

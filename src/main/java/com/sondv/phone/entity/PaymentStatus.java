@@ -1,4 +1,4 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
 public enum PaymentStatus {
     PENDING,      // Chờ thanh toán

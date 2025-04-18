@@ -1,6 +1,6 @@
 package com.sondv.phone.dto;
 
-import com.sondv.phone.model.OrderStatus;
+import com.sondv.phone.entity.OrderStatus;
 import lombok.Data;
 
 @Data

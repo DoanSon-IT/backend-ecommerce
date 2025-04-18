@@ -2,8 +2,7 @@ package com.sondv.phone.repository;
 
 import com.sondv.phone.dto.CategoryRevenueDTO;
 import com.sondv.phone.dto.TopProductDTO;
-import com.sondv.phone.model.OrderDetail;
-import com.sondv.phone.model.OrderStatus;
+import com.sondv.phone.entity.OrderDetail;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,7 +21,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Long> 
     )
     FROM OrderDetail od
     WHERE od.order.createdAt BETWEEN :startDate AND :endDate
-      AND od.order.status = com.sondv.phone.model.OrderStatus.COMPLETED
+      AND od.order.status = com.sondv.phone.entity.OrderStatus.COMPLETED
     GROUP BY od.product.id, od.product.name
     ORDER BY SUM(od.quantity) DESC
     """)

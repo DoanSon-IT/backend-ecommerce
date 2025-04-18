@@ -1,6 +1,5 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
-import com.sondv.phone.model.RoleName;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

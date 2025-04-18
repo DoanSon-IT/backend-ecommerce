@@ -1,7 +1,7 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Category;
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Category;
+import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
 package com.sondv.phone.dto;
 
-import com.sondv.phone.model.PaymentStatus;
+import com.sondv.phone.entity.PaymentStatus;
 import lombok.Getter;
 import lombok.Setter;
 

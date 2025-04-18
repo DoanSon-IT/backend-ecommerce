@@ -1,7 +1,7 @@
 package com.sondv.phone.service;
 
 import com.sondv.phone.dto.*;
-import com.sondv.phone.model.*;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +31,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final InventoryService inventoryService;
+    private final ShippingService shippingService;
+    private final PaymentRepository paymentRepository;
 
     @Transactional
     public Order createOrder(User user, OrderRequest orderRequest) {
@@ -54,7 +56,6 @@ public class OrderService {
         BigDecimal totalPriceBeforeDiscount = BigDecimal.ZERO;
         OffsetDateTime now = OffsetDateTime.now();
 
-        // ✅ Lặp qua các sản phẩm trong giỏ
         for (int i = 0; i < orderRequest.getProductIds().size(); i++) {
             Long productId = orderRequest.getProductIds().get(i);
             int quantity = orderRequest.getQuantities().get(i);
@@ -70,7 +71,6 @@ public class OrderService {
 
             Product product = inventory.getProduct();
 
-            // ❌ Không cho áp mã nếu có khuyến mãi đang hoạt động
             if (product.getDiscountedPrice() != null &&
                     product.getDiscountStartDate() != null &&
                     product.getDiscountEndDate() != null) {
@@ -97,7 +97,7 @@ public class OrderService {
 
         order.setOrderDetails(orderDetails);
 
-        // ✅ Áp mã giảm giá (nếu có)
+        // Áp mã giảm giá (nếu có)
         Discount appliedDiscount = null;
         BigDecimal discountAmount = BigDecimal.ZERO;
 
@@ -128,26 +128,53 @@ public class OrderService {
             discountRepository.save(appliedDiscount);
         }
 
-        // ✅ Shipping
+        // Shipping
         ShippingInfo shippingInfo = new ShippingInfo();
         shippingInfo.setOrder(order);
         shippingInfo.setAddress(orderRequest.getAddress());
         shippingInfo.setPhoneNumber(orderRequest.getPhoneNumber());
         shippingInfo.setCarrier(orderRequest.getCarrier());
-        shippingInfo.setShippingFee(orderRequest.getShippingFee());
-        shippingInfo.setEstimatedDelivery(orderRequest.getEstimatedDelivery());
+
+        // Tính shippingFee và estimatedDelivery từ ShippingService
+        ShippingEstimateDTO estimate = shippingService.estimateShipping(
+                orderRequest.getAddress(),
+                orderRequest.getCarrier()
+        );
+        shippingInfo.setShippingFee(estimate.getFee());
+        shippingInfo.setEstimatedDelivery(estimate.getEstimatedDelivery());
         order.setShippingInfo(shippingInfo);
 
-        // ✅ Tổng tiền cuối cùng
-        BigDecimal shippingFee = orderRequest.getShippingFee() != null ? orderRequest.getShippingFee() : BigDecimal.ZERO;
+        // Tổng tiền cuối cùng
+        BigDecimal shippingFee = estimate.getFee() != null ? estimate.getFee() : BigDecimal.ZERO;
         BigDecimal finalTotal = totalPriceBeforeDiscount.subtract(discountAmount).add(shippingFee);
 
         order.setTotalPrice(finalTotal);
+        order.setShippingFee(shippingFee);
         if (appliedDiscount != null) {
             order.setDiscount(appliedDiscount);
         }
 
-        return orderRepository.save(order);
+        // Chuẩn hóa paymentMethod
+        PaymentMethod paymentMethod;
+        try {
+            paymentMethod = orderRequest.getPaymentMethod() != null
+                    ? PaymentMethod.valueOf(orderRequest.getPaymentMethod().toUpperCase())
+                    : PaymentMethod.COD;
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ: " + orderRequest.getPaymentMethod());
+        }
+
+        // Lưu Order
+        order = orderRepository.save(order);
+
+        // Tạo Payment
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setPaymentMethod(paymentMethod);
+        payment.setStatus(PaymentStatus.PENDING);
+        paymentRepository.save(payment);
+
+        return order;
     }
 
     private BigDecimal resolveCurrentPrice(Product product) {
@@ -167,26 +194,22 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng!"));
 
-        // Kiểm tra quyền (user chỉ được hủy đơn hàng của mình, hoặc Admin được quyền hủy bất kỳ đơn nào)
         if (!order.getCustomer().getUser().getId().equals(user.getId()) &&
                 user.getRoles().stream().noneMatch(role -> role == RoleName.ADMIN || role == RoleName.STAFF)) {
             throw new RuntimeException("Bạn không có quyền hủy đơn hàng này!");
         }
 
-        // Kiểm tra trạng thái cho phép hủy
         if (!(order.getStatus() == OrderStatus.PENDING )) {
             throw new RuntimeException("Đơn hàng này không thể hủy ở trạng thái hiện tại!");
         }
 
-        // Cập nhật trạng thái đơn hàng thành CANCELLED
         order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
 
-        // Hoàn lại số lượng tồn kho
         for (OrderDetail detail : order.getOrderDetails()) {
             inventoryService.adjustInventory(
                     detail.getProduct().getId(),
-                    detail.getQuantity(), // hoàn lại số lượng
+                    detail.getQuantity(),
                     "Hủy đơn hàng",
                     user.getId()
             );
@@ -212,7 +235,6 @@ public class OrderService {
         Specification<Order> spec = (root, query, cb) -> {
             Predicate predicate = cb.conjunction();
 
-            // Nếu không phải Admin/Staff → chỉ lấy đơn của khách hàng đó
             boolean isAdmin = user.getRoles().stream().anyMatch(r -> r == RoleName.ADMIN || r == RoleName.STAFF);
             if (!isAdmin) {
                 Customer customer = customerRepository.findByUserId(user.getId())
@@ -259,8 +281,15 @@ public class OrderService {
         dto.setStatus(order.getStatus().name());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setTotalPrice(order.getTotalPrice());
+        dto.setShippingFee(order.getShippingFee());
 
-        // ✅ Kiểm tra null tránh lỗi
+        // Lấy paymentMethod từ Payment
+        Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
+        if (payment != null) {
+            dto.setPaymentMethod(payment.getPaymentMethod().name());
+        }
+
+        // Các phần ánh xạ khác (customer, shippingInfo, orderDetails) giữ nguyên
         if (order.getCustomer() != null && order.getCustomer().getUser() != null) {
             CustomerInfoDTO customerDTO = new CustomerInfoDTO();
             customerDTO.setFullName(order.getCustomer().getUser().getFullName());
@@ -268,7 +297,6 @@ public class OrderService {
             dto.setCustomer(customerDTO);
         }
 
-        // Shipping info
         if (order.getShippingInfo() != null) {
             ShippingInfoDTO shippingDTO = new ShippingInfoDTO();
             shippingDTO.setAddress(order.getShippingInfo().getAddress());
@@ -279,10 +307,10 @@ public class OrderService {
             dto.setShippingInfo(shippingDTO);
         }
 
-        // Chi tiết đơn hàng
         List<OrderDetailResponse> detailDTOs = order.getOrderDetails().stream().map(detail -> {
             OrderDetailResponse d = new OrderDetailResponse();
             d.setId(detail.getId());
+            d.setProductId(detail.getProduct().getId()); // Đã sửa ở câu hỏi trước
             d.setProductName(detail.getProduct().getName());
             d.setQuantity(detail.getQuantity());
             d.setPrice(detail.getPrice());
@@ -291,6 +319,14 @@ public class OrderService {
                     .map(ProductImage::getImageUrl)
                     .orElse("/images/default.png");
             d.setProductImage(productImageUrl);
+
+            if (detail.getReview() != null) {
+                ReviewResponse review = new ReviewResponse();
+                review.setRating(detail.getReview().getRating());
+                review.setComment(detail.getReview().getComment());
+                d.setReview(review);
+            }
+
             return d;
         }).toList();
 

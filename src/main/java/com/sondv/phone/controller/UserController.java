@@ -2,8 +2,8 @@ package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.UpdateUserRequestDTO;
 import com.sondv.phone.dto.UserResponseDTO;
-import com.sondv.phone.model.Customer;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Customer;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.CustomerRepository;
 import com.sondv.phone.repository.UserRepository;
 import jakarta.validation.Valid;

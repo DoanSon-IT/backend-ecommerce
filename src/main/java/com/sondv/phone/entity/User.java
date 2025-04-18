@@ -1,10 +1,8 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sondv.phone.security.oauth2.user.BaseOAuth2User;
-import com.sondv.phone.security.oauth2.user.CustomOAuth2User;
-import com.sondv.phone.security.oauth2.user.CustomOidcUser;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;

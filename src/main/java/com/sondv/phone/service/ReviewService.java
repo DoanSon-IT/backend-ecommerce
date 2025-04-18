@@ -1,80 +1,88 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.dto.ReviewRequestDto;
-import com.sondv.phone.dto.ReviewResponseDto;
-import com.sondv.phone.model.*;
+import com.sondv.phone.dto.ReviewResponse;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
-import com.sondv.phone.util.SecurityUtils;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ReviewService {
+
     private final ReviewRepository reviewRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final ProductRepository productRepository;
 
-    public ReviewResponseDto addReview(ReviewRequestDto dto, Long customerId) {
-
-
-        OrderDetail orderDetail = orderDetailRepository.findById(dto.getOrderDetailId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy mục đơn hàng"));
-
-        Order order = orderDetail.getOrder();
-
-        System.out.println("🔥 DEBUG: customerId từ JWT: " + customerId);
-        System.out.println("🔥 DEBUG: customerId của order: " + order.getCustomer().getId());
-
-        Long userId = SecurityUtils.getCurrentUserId();
-        if (!order.getCustomer().getUser().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền đánh giá đơn hàng này");
+    @Transactional
+    public Review addReview(Review review) {
+        // 1. Kiểm tra OrderDetail tồn tại và hợp lệ
+        OrderDetail orderDetail = review.getOrderDetail();
+        if (orderDetail == null || orderDetail.getProduct() == null) {
+            throw new IllegalArgumentException("Review must be associated with a valid OrderDetail and Product.");
         }
 
-        if (order.getStatus() != OrderStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ được đánh giá sau khi đơn hàng đã hoàn tất");
-        }
-
+        // 2. Dự phòng - kiểm tra sản phẩm đã được đánh giá chưa
         if (orderDetail.getReview() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Sản phẩm trong đơn hàng này đã được đánh giá");
         }
 
-        // ✅ Tạo và lưu Review
-        Review review = new Review();
-        review.setOrderDetail(orderDetail);
-        review.setRating(dto.getRating());
-        review.setComment(dto.getComment());
-        review.setCreatedAt(LocalDateTime.now());
-        reviewRepository.save(review);
+        // 3. Lưu review mới
+        Review savedReview = reviewRepository.save(review);
 
-        Product product = orderDetail.getProduct();
-        Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
-        Long count = reviewRepository.countByOrderDetail_Product_Id(product.getId());
+        // 4. Cập nhật lại rating trung bình cho sản phẩm
+        updateProductRating(orderDetail.getProduct());
 
-        product.setRating(avgRating);
-        product.setRatingCount(count.intValue());
-
-        ReviewResponseDto response = new ReviewResponseDto();
-        response.setId(review.getId());
-        response.setRating(review.getRating());
-        response.setComment(review.getComment());
-        response.setCreatedAt(review.getCreatedAt().toString());
-        response.setProductName(product.getName());
-        response.setCustomerName(order.getCustomer().getFullName());
-
-        return response;
+        // 5. Trả về review đã lưu
+        return savedReview;
     }
 
-    public Page<ReviewResponseDto> getPagedReviews(Long productId, Pageable pageable) {
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    private void updateProductRating(Product product) {
+        String cacheKey = "product:rating:" + product.getId();
+
+        Double avgRating;
+        Long count;
+
+        try {
+            String avgRatingStr = redisTemplate.opsForValue().get(cacheKey + ":avg");
+            String countStr = redisTemplate.opsForValue().get(cacheKey + ":count");
+
+            avgRating = avgRatingStr != null ? Double.parseDouble(avgRatingStr) : null;
+            count = countStr != null ? Long.parseLong(countStr) : null;
+        } catch (NumberFormatException e) {
+            avgRating = null;
+            count = null;
+        }
+
+        if (avgRating == null || count == null) {
+            avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
+            count = reviewRepository.countReviewsByProductId(product.getId());
+
+            redisTemplate.opsForValue().set(cacheKey + ":avg", avgRating != null ? avgRating.toString() : "0.0");
+            redisTemplate.opsForValue().set(cacheKey + ":count", count != null ? count.toString() : "0");
+        }
+
+        product.setRating(avgRating != null ? avgRating : 0.0);
+        product.setRatingCount(count != null ? count.intValue() : 0);
+        productRepository.save(product);
+    }
+
+    public Page<ReviewResponse> getPagedReviews(Long productId, Pageable pageable) {
         return reviewRepository.findByOrderDetail_Product_Id(productId, pageable)
                 .map(review -> {
-                    ReviewResponseDto dto = new ReviewResponseDto();
+                    ReviewResponse dto = new ReviewResponse();
                     dto.setId(review.getId());
                     dto.setRating(review.getRating());
                     dto.setComment(review.getComment());
@@ -85,4 +93,16 @@ public class ReviewService {
                 });
     }
 
+    public Double getAverageRating(Long productId) {
+        Double avg = reviewRepository.findAverageRatingByProductId(productId);
+        return avg != null ? avg : 0.0;
+    }
+
+    public Long getReviewCount(Long productId) {
+        return reviewRepository.countReviewsByProductId(productId);
+    }
+
+    public List<Review> getReviewsByProduct(Long productId) {
+        return reviewRepository.findAllByProductId(productId);
+    }
 }

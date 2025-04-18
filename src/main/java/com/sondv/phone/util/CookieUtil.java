@@ -17,7 +17,7 @@ public class CookieUtil {
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAge, boolean httpOnly, String sameSite) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(httpOnly);
-        cookie.setSecure(isProduction()); // chỉ bật secure ở môi trường production
+        cookie.setSecure(isProduction());
         cookie.setPath("/");
         cookie.setMaxAge(maxAge);
 

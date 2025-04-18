@@ -1,14 +1,13 @@
 package com.sondv.phone.service;
 
 import com.sondv.phone.dto.*;
-import com.sondv.phone.model.*;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

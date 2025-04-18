@@ -1,4 +1,4 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -31,6 +31,9 @@ public class Order {
     private OrderStatus status = OrderStatus.PENDING;
 
     @Column(nullable = false)
+    private BigDecimal shippingFee;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -44,4 +47,5 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private ShippingInfo shippingInfo;
+
 }

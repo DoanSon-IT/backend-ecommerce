@@ -46,7 +46,7 @@ public class ReportService {
 
     public Map<String, Long> getOrderCountByStatus(LocalDateTime startDate, LocalDateTime endDate) {
         Map<String, Long> map = new HashMap<>();
-        Arrays.stream(com.sondv.phone.model.OrderStatus.values()).forEach(status -> {
+        Arrays.stream(com.sondv.phone.entity.OrderStatus.values()).forEach(status -> {
             long count = orderRepository.countByStatusAndCreatedAtBetween(status, startDate, endDate);
             map.put(status.name(), count);
         });

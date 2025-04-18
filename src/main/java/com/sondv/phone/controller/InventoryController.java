@@ -1,9 +1,9 @@
 package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.InventoryReportDTO;
-import com.sondv.phone.model.Inventory;
-import com.sondv.phone.model.InventoryLog;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Inventory;
+import com.sondv.phone.entity.InventoryLog;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.InventoryLogRepository;
 import com.sondv.phone.repository.InventoryRepository;
 import com.sondv.phone.repository.UserRepository;
@@ -19,10 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

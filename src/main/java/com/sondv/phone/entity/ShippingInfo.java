@@ -1,4 +1,4 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;

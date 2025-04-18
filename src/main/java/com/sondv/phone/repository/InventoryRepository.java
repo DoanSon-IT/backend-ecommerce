@@ -1,7 +1,7 @@
 package com.sondv.phone.repository;
 
 import com.sondv.phone.dto.InventoryReportDTO;
-import com.sondv.phone.model.Inventory;
+import com.sondv.phone.entity.Inventory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

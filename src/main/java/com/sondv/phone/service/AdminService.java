@@ -2,10 +2,10 @@ package com.sondv.phone.service;
 
 import com.sondv.phone.dto.StatsResponse;
 import com.sondv.phone.dto.TopProductDTO;
-import com.sondv.phone.model.Order;
-import com.sondv.phone.model.OrderStatus;
-import com.sondv.phone.model.Product;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Order;
+import com.sondv.phone.entity.OrderStatus;
+import com.sondv.phone.entity.Product;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.OrderDetailRepository;
 import com.sondv.phone.repository.OrderRepository;
 import com.sondv.phone.repository.ProductRepository;
@@ -111,7 +111,7 @@ public class AdminService {
     }
 
     public Map<String, Long> getOrderCountByStatus() {
-        return Arrays.stream(com.sondv.phone.model.OrderStatus.values())
+        return Arrays.stream(com.sondv.phone.entity.OrderStatus.values())
                 .collect(Collectors.toMap(
                         Enum::name,
                         status -> orderRepository.countByStatus(status)

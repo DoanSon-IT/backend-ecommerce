@@ -27,7 +27,7 @@ public class OpenAiClient {
         headers.setBearerAuth(groqApiKey); // ✅ Gắn Groq API key
 
         Map<String, Object> requestBody = Map.of(
-                "model", "llama3-70b-8192",
+                "entity", "llama3-70b-8192",
                 "messages", List.of(
                         Map.of("role", "system", "content",
                                 "Bạn là một trợ lý tư vấn bán điện thoại thông minh. Trả lời thân thiện, dễ hiểu, ngắn gọn. Có thể dùng emoji nếu cần."),

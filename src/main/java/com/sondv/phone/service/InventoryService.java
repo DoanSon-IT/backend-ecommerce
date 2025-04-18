@@ -1,8 +1,8 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Inventory;
-import com.sondv.phone.model.InventoryLog;
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Inventory;
+import com.sondv.phone.entity.InventoryLog;
+import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.InventoryLogRepository;
 import com.sondv.phone.repository.InventoryRepository;
 import com.sondv.phone.repository.ProductRepository;

@@ -1,35 +1,39 @@
-package com.sondv.phone.model;
+package com.sondv.phone.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 @Entity
-@Table(name = "inventory_logs")
+@Table(name = "inventory")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class InventoryLog {
+public class Inventory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @OneToOne
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonBackReference("product-inventoryLogs")
+    @JsonBackReference("product-inventory")
     private Product product;
 
-    private int oldQuantity;
-    private int newQuantity;
-    private String reason;
+    @Column(nullable = false)
+    private int quantity;
 
     @Column(nullable = false)
-    private Long userId; // Người thực hiện thay đổi
+    private int maxQuantity = 100;
 
+    @Column(nullable = false)
+    private int minQuantity = 5;
+
+    @Column(nullable = false)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private LocalDateTime lastUpdated = LocalDateTime.now();
 }

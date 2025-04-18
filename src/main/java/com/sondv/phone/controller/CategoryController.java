@@ -1,7 +1,7 @@
 package com.sondv.phone.controller;
 
-import com.sondv.phone.model.Category;
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Category;
+import com.sondv.phone.entity.Product;
 import com.sondv.phone.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

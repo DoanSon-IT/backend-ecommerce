@@ -1,6 +1,6 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Product;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;

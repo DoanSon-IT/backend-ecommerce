@@ -1,7 +1,7 @@
 package com.sondv.phone.service;
 
 import com.sondv.phone.dto.UserResponseDTO;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

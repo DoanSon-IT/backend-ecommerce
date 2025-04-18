@@ -1,7 +1,7 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.RoleName; // Thay Role bằng RoleName
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.RoleName; // Thay Role bằng RoleName
+import com.sondv.phone.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

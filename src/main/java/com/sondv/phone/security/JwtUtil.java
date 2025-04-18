@@ -1,6 +1,6 @@
 package com.sondv.phone.security;
 
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;

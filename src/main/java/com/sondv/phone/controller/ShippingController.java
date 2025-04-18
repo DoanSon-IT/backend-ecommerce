@@ -1,8 +1,10 @@
 package com.sondv.phone.controller;
 
+import com.sondv.phone.dto.ShippingEstimateDTO;
+import com.sondv.phone.dto.ShippingEstimateRequest;
 import com.sondv.phone.dto.ShippingRequest;
-import com.sondv.phone.model.Order;
-import com.sondv.phone.model.ShippingInfo;
+import com.sondv.phone.entity.Order;
+import com.sondv.phone.entity.ShippingInfo;
 import com.sondv.phone.repository.OrderRepository;
 import com.sondv.phone.service.ShippingService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,12 @@ public class ShippingController {
     private final ShippingService shippingService;
     private final OrderRepository orderRepository;
 
-    // ✅ 1. Lấy thông tin vận chuyển
+    @PostMapping("/estimate")
+    public ResponseEntity<ShippingEstimateDTO> estimateShipping(@RequestBody ShippingEstimateRequest request) {
+        ShippingEstimateDTO result = shippingService.estimateShipping(request.getAddress(), request.getCarrier());
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/{orderId}")
     public ResponseEntity<Optional<ShippingInfo>> getShipping(
             @PathVariable Long orderId,
@@ -29,7 +36,6 @@ public class ShippingController {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
 
-        // Kiểm tra quyền: Chỉ CUSTOMER sở hữu đơn hàng, ADMIN hoặc STAFF mới được xem
         String email = authentication.getName();
         boolean isCustomer = order.getCustomer().getUser().getEmail().equals(email);
         boolean isAdminOrStaff = authentication.getAuthorities().stream()
@@ -42,20 +48,18 @@ public class ShippingController {
         return ResponseEntity.ok(shippingService.getShippingByOrderId(orderId));
     }
 
-    // ✅ 2. Thêm thông tin vận chuyển
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ShippingInfo> createShipping(@RequestBody ShippingRequest shippingRequest) {
         ShippingInfo shippingInfo = shippingService.createShipping(
                 shippingRequest.getOrderId(),
                 shippingRequest.getCarrier(),
-                shippingRequest.getTrackingNumber(),
-                shippingRequest.getEstimatedDelivery()
+                "",
+                ""
         );
         return ResponseEntity.ok(shippingInfo);
     }
 
-    // ✅ 3. Cập nhật thông tin vận chuyển
     @PutMapping("/{orderId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<ShippingInfo> updateShipping(
@@ -69,7 +73,6 @@ public class ShippingController {
         ));
     }
 
-    // ✅ 4. Xóa thông tin vận chuyển
     @DeleteMapping("/{orderId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ResponseEntity<String> deleteShipping(@PathVariable Long orderId) {

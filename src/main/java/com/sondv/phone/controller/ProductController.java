@@ -2,7 +2,7 @@ package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.ProductDTO;
 import com.sondv.phone.dto.ProductImageDTO;
-import com.sondv.phone.model.*;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

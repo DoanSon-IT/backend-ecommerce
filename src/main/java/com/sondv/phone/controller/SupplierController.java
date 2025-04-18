@@ -1,6 +1,6 @@
 package com.sondv.phone.controller;
 
-import com.sondv.phone.model.Supplier;
+import com.sondv.phone.entity.Supplier;
 import com.sondv.phone.service.SupplierService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

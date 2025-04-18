@@ -1,6 +1,6 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Supplier;
+import com.sondv.phone.entity.Supplier;
 import com.sondv.phone.repository.SupplierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

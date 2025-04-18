@@ -1,7 +1,7 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Message;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Message;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.MessageRepository;
 import com.sondv.phone.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

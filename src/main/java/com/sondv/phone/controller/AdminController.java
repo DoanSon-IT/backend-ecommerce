@@ -2,9 +2,9 @@ package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.StatsResponse;
 import com.sondv.phone.dto.TopProductDTO;
-import com.sondv.phone.model.Order;
-import com.sondv.phone.model.Product;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.Order;
+import com.sondv.phone.entity.Product;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;

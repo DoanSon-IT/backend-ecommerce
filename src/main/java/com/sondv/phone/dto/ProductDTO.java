@@ -3,8 +3,8 @@ package com.sondv.phone.dto;
 import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sondv.phone.model.Inventory;
-import com.sondv.phone.model.InventoryLog;
+import com.sondv.phone.entity.Inventory;
+import com.sondv.phone.entity.InventoryLog;
 import lombok.*;
 
 import java.math.BigDecimal;

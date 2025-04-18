@@ -1,16 +1,13 @@
 package com.sondv.phone.service;
 
-import com.sondv.phone.model.Order;
-import com.sondv.phone.model.Payment;
-import com.sondv.phone.model.PaymentMethod;
-import com.sondv.phone.model.PaymentStatus;
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.OrderRepository;
 import com.sondv.phone.repository.PaymentRepository;
 import com.sondv.phone.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -35,12 +32,27 @@ public class PaymentService {
         return paymentRepository.findByOrderId(orderId);
     }
 
+    public Payment getPaymentById(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thanh toán với ID: " + paymentId));
+    }
+
+    public Optional<Payment> getPaymentByTransactionId(String transactionId) {
+        return paymentRepository.findByTransactionId(transactionId);
+    }
+
     public Payment createPayment(Long orderId, PaymentMethod method) {
-        Order order = getOrderById(orderId);
+        Optional<Payment> existing = paymentRepository.findByOrderId(orderId);
+        if (existing.isPresent()) {
+            throw new IllegalStateException("Đơn hàng này đã có thanh toán.");
+        }
+
         Payment payment = new Payment();
-        payment.setOrder(order);
+        payment.setOrder(orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng")));
         payment.setPaymentMethod(method);
-        payment.setStatus(PaymentStatus.PENDING); // Sử dụng Enum thay vì String
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setCreatedAt(LocalDateTime.now());
+
         return paymentRepository.save(payment);
     }
 

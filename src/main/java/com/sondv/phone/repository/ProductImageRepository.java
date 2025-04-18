@@ -1,6 +1,6 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.ProductImage;
+import com.sondv.phone.entity.ProductImage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

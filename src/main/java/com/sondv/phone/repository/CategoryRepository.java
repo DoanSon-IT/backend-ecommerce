@@ -1,6 +1,6 @@
 package com.sondv.phone.repository;
 
-import com.sondv.phone.model.Category;
+import com.sondv.phone.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

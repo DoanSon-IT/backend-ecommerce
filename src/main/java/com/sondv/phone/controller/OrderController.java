@@ -1,10 +1,11 @@
 package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.*;
-import com.sondv.phone.model.*;
+import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
 import com.sondv.phone.service.InventoryService;
 import com.sondv.phone.service.OrderService;
+import com.sondv.phone.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,15 +33,35 @@ public class OrderController {
     private final OrderDetailRepository orderDetailRepository;
     private final OrderService orderService;
     private final InventoryService inventoryService;
+    private final ShippingService shippingService;
 
-    // Khai báo Logger
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
 
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<Order> createOrder(@RequestBody OrderRequest orderRequest, Authentication authentication) {
         User user = (User) authentication.getPrincipal();
+
+        // Cập nhật address, phoneNumber vào User
+        if (user.getAddress() == null || user.getPhone() == null) {
+            user.setAddress(orderRequest.getAddress());
+            user.setPhone(orderRequest.getPhoneNumber());
+            userRepository.save(user);
+        }
+
+        // Tạo Order
         Order order = orderService.createOrder(user, orderRequest);
+
+        // Tính phí và thời gian giao hàng
+        ShippingEstimateDTO estimate = shippingService.estimateShipping(
+                orderRequest.getAddress(),
+                orderRequest.getCarrier()
+        );
+
+        order.setShippingFee(estimate.getFee());
+        order.setStatus(OrderStatus.PENDING);
+        orderRepository.save(order);
+
         return ResponseEntity.ok(order);
     }
 
@@ -113,7 +134,6 @@ public class OrderController {
 
         User user = (User) authentication.getPrincipal();
 
-        // ✅ Gọi service xử lý phân trang
         Page<OrderResponse> result = orderService.getPaginatedOrders(
                 user, page, size, sort, direction, status, customerName, orderId, startDate, endDate
         );
@@ -123,9 +143,9 @@ public class OrderController {
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id,
-                                                   @RequestBody String newStatus,
-                                                   Authentication authentication) {
+    public ResponseEntity<OrderResponse> updateOrderStatus(@PathVariable Long id,
+                                                           @RequestBody String newStatus,
+                                                           Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(null);
         }
@@ -149,7 +169,9 @@ public class OrderController {
         }
 
         order.setStatus(status);
-        return ResponseEntity.ok(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+        OrderResponse response = orderService.mapToOrderResponse(savedOrder);
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/cancel")

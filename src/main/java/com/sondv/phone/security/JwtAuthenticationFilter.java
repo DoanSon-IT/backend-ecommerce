@@ -1,6 +1,6 @@
 package com.sondv.phone.security;
 
-import com.sondv.phone.model.User;
+import com.sondv.phone.entity.User;
 import com.sondv.phone.repository.UserRepository;
 import com.sondv.phone.util.CookieUtil;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.slf4j.Logger;

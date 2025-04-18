@@ -2,8 +2,8 @@ package com.sondv.phone.service;
 
 import com.sondv.phone.dto.DiscountApplyRequest;
 import com.sondv.phone.dto.DiscountApplyResponse;
-import com.sondv.phone.model.Discount;
-import com.sondv.phone.model.Product;
+import com.sondv.phone.entity.Discount;
+import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.DiscountRepository;
 import com.sondv.phone.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;

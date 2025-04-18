@@ -3,7 +3,7 @@ package com.sondv.phone.dto;
 import lombok.Data;
 
 @Data
-public class ReviewResponseDto {
+public class ReviewResponse {
     private Long id;
     private int rating;
     private String comment;
