@@ -5,6 +5,8 @@ import com.sondv.phone.entity.*;
 import com.sondv.phone.repository.*;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +35,8 @@ public class OrderService {
     private final InventoryService inventoryService;
     private final ShippingService shippingService;
     private final PaymentRepository paymentRepository;
+
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class); // Thêm logger
 
     @Transactional
     public Order createOrder(User user, OrderRequest orderRequest) {
@@ -218,6 +222,34 @@ public class OrderService {
         return order;
     }
 
+    @Transactional
+    public Order updateOrderStatus(Long orderId, OrderStatus status, User user) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng!"));
+
+        if (status == OrderStatus.COMPLETED) {
+            // Điều chỉnh inventory
+            for (OrderDetail detail : order.getOrderDetails()) {
+                inventoryService.adjustInventory(
+                        detail.getProduct().getId(),
+                        -detail.getQuantity(),
+                        "Hoàn thành đơn hàng",
+                        user.getId()
+                );
+            }
+            // Cộng 1000 điểm
+            Customer customer = order.getCustomer();
+            int currentPoints = customer.getLoyaltyPoints() != null ? customer.getLoyaltyPoints() : 0;
+            customer.setLoyaltyPoints(currentPoints + 1000);
+            customerRepository.save(customer);
+            logger.info("Cộng 1000 điểm cho khách hàng {} (ID: {}). Tổng điểm hiện tại: {}",
+                    customer.getUser().getFullName(), customer.getId(), customer.getLoyaltyPoints());
+        }
+
+        order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
     public Page<OrderResponse> getPaginatedOrders(User user,
                                                   int page,
                                                   int size,
@@ -310,7 +342,7 @@ public class OrderService {
         List<OrderDetailResponse> detailDTOs = order.getOrderDetails().stream().map(detail -> {
             OrderDetailResponse d = new OrderDetailResponse();
             d.setId(detail.getId());
-            d.setProductId(detail.getProduct().getId()); // Đã sửa ở câu hỏi trước
+            d.setProductId(detail.getProduct().getId());
             d.setProductName(detail.getProduct().getName());
             d.setQuantity(detail.getQuantity());
             d.setPrice(detail.getPrice());

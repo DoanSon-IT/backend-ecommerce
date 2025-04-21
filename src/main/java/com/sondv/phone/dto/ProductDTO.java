@@ -51,6 +51,11 @@ public class ProductDTO {
 
     private Integer soldQuantity;
 
+    private Double rating;
+
+    @Min(value = 0, message = "Số lượng đánh giá không được âm")
+    private Integer ratingCount;
+
     @NotNull(message = "Danh mục không được để trống")
     private CategoryDTO category;
 

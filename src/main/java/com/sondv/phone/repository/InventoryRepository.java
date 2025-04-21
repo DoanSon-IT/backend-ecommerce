@@ -14,10 +14,8 @@ import java.util.Optional;
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findByProductId(Long productId);
 
-    // Thêm phương thức kiểm tra tồn tại Inventory theo productId
     boolean existsByProductId(Long productId);
 
-    // Thêm phương thức xóa Inventory theo productId
     @Modifying
     @Query("DELETE FROM Inventory i WHERE i.product.id = :productId")
     void deleteByProductId(@Param("productId") Long productId);

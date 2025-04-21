@@ -30,7 +30,7 @@ public class CustomOAuth2User implements OAuth2User, BaseOAuth2User {
 
     @Override
     public String getEmail() {
-        Object email = oAuth2User.getAttributes().get("templates/email");
+        Object email = oAuth2User.getAttributes().get("email");
         return email != null ? email.toString() : null;
     }
 

@@ -16,7 +16,7 @@ public class OpenAiClient {
     @Value("${GROQ_API_KEY}")
     private String groqApiKey;
 
-    @Value("${GROQ_API_KEY}")
+    @Value("${GROQ_API_URL}")
     private String groqApiUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -27,13 +27,15 @@ public class OpenAiClient {
         headers.setBearerAuth(groqApiKey); // ✅ Gắn Groq API key
 
         Map<String, Object> requestBody = Map.of(
-                "entity", "llama3-70b-8192",
+                "model", "llama3-70b-8192",
                 "messages", List.of(
                         Map.of("role", "system", "content",
-                                "Bạn là một trợ lý tư vấn bán điện thoại thông minh. Trả lời thân thiện, dễ hiểu, ngắn gọn. Có thể dùng emoji nếu cần."),
+                                "Bạn là trợ lý tư vấn bán điện thoại. QUAN TRỌNG: CHỈ sử dụng thông tin được cung cấp trong prompt, " +
+                                        "KHÔNG ĐƯỢC bịa ra thông tin. Nếu không có thông tin, hãy trả lời rằng bạn chưa có dữ liệu về sản phẩm đó. " +
+                                        "Luôn trung thực và rõ ràng về những gì bạn biết và không biết."),
                         Map.of("role", "user", "content", prompt)
                 ),
-                "max_tokens", 200,
+                "max_tokens", 150,
                 "temperature", 0.8
         );
 

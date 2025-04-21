@@ -7,6 +7,8 @@ import java.util.List;
 
 @Repository
 public interface SupplierRepository extends JpaRepository<Supplier, Long> {
+
     List<Supplier> findByNameContainingIgnoreCase(String name);
+
     List<Supplier> findByEmailContainingIgnoreCase(String email);
 }

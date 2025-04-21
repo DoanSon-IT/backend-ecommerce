@@ -151,26 +151,10 @@ public class OrderController {
         }
 
         User user = (User) authentication.getPrincipal();
-
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng!"));
-
         OrderStatus status = OrderStatus.valueOf(newStatus.toUpperCase());
 
-        if (status == OrderStatus.COMPLETED) {
-            for (OrderDetail detail : order.getOrderDetails()) {
-                inventoryService.adjustInventory(
-                        detail.getProduct().getId(),
-                        -detail.getQuantity(),
-                        "Hoàn thành đơn hàng",
-                        user.getId()
-                );
-            }
-        }
-
-        order.setStatus(status);
-        Order savedOrder = orderRepository.save(order);
-        OrderResponse response = orderService.mapToOrderResponse(savedOrder);
+        Order order = orderService.updateOrderStatus(id, status, user);
+        OrderResponse response = orderService.mapToOrderResponse(order);
         return ResponseEntity.ok(response);
     }
 

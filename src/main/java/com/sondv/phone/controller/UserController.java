@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -24,7 +26,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -134,25 +135,53 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<User> users = userRepository.findAll(PageRequest.of(page, size));
-        List<UserResponseDTO> userDTOs = users.stream()
-                .map(this::mapToUserResponseDTO)
-                .collect(Collectors.toList());
+    public ResponseEntity<Page<UserResponseDTO>> getUsers(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "") int page,
+                    @RequestParam(defaultValue = "10") int size,
+    @RequestParam(defaultValue = "id") String sortBy,
+    @RequestParam(defaultValue = "asc") String sortDir) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<User> users;
+        if (keyword.isBlank()) {
+            users = sortDir.equalsIgnoreCase("asc")
+                    ? userRepository.findAllByOrderByIdAsc(pageable)
+                    : userRepository.findAllByOrderByIdDesc(pageable);
+        } else {
+            users = userRepository.searchUsers(keyword, pageable);
+        }
+
+        Page<UserResponseDTO> userDTOs = users.map(this::mapToUserResponseDTO);
         return ResponseEntity.ok(userDTOs);
     }
 
-    // Lấy danh sách tất cả khách hàng (chỉ dành cho ADMIN)
     @GetMapping("/customers")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<List<Customer>> getAllCustomers() {
-        List<Customer> customers = customerRepository.findAll();
+    public ResponseEntity<Page<Customer>> getCustomers(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Customer> customers;
+        if (keyword.isBlank()) {
+            // Sử dụng phương thức sắp xếp từ repository
+            customers = sortDir.equalsIgnoreCase("asc")
+                    ? customerRepository.findAllByOrderByIdAsc(pageable)
+                    : customerRepository.findAllByOrderByIdDesc(pageable);
+        } else {
+            // Tìm kiếm với từ khóa, không cần thay đổi vì repository đã có searchCustomers
+            customers = customerRepository.searchCustomers(keyword, pageable);
+        }
+
         return ResponseEntity.ok(customers);
     }
 
-    // Xóa người dùng (chỉ dành cho ADMIN)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
@@ -162,7 +191,6 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    // Cập nhật điểm tích lũy khách hàng (chỉ dành cho ADMIN)
     @PutMapping("/customers/{id}/loyalty-points")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Customer> updateLoyaltyPoints(@PathVariable Long id, @RequestBody Integer points) {
@@ -173,7 +201,6 @@ public class UserController {
         return ResponseEntity.ok(customer);
     }
 
-    // Xóa khách hàng (chỉ dành cho ADMIN)
     @DeleteMapping("/customers/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
@@ -193,7 +220,7 @@ public class UserController {
         userDTO.setAvatarUrl(user.getAvatarUrl());
         userDTO.setProvider(user.getProvider().name());
         userDTO.setCreatedAt(user.getCreatedAt());
-        userDTO.setRoles(user.getRoles().stream().map(Enum::name).collect(Collectors.toList())); // 🔥 map Enum -> String
+        userDTO.setRoles(user.getRoles().stream().map(Enum::name).collect(Collectors.toList()));
         userDTO.setVerified(user.isVerified());
         return userDTO;
     }

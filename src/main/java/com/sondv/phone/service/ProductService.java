@@ -458,6 +458,8 @@ public class ProductService {
                 .isFeatured(product.isFeatured())
                 .stock(product.getStock())
                 .soldQuantity(product.getSoldQuantity())
+                .rating(product.getRating())
+                .ratingCount(product.getRatingCount())
                 .category(mapCategoryToDTO(product.getCategory()))
                 .supplier(mapSupplierToDTO(product.getSupplier()))
                 .images(
