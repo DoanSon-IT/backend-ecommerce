@@ -23,4 +23,6 @@ public class OrderResponse {
     private ShippingInfoDTO shippingInfo;
     private List<OrderDetailResponse> orderDetails;
     private String paymentMethod;
+    private String paymentStatus;
 }
+

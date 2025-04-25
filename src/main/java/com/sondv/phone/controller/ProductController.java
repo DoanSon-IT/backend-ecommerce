@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class ProductController {
 
     private final ProductService productService;
-    private static final Logger logger = LoggerFactory.getLogger(ProductController.class); // Sửa logger
+    private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
 
     @GetMapping
     public ResponseEntity<Page<ProductDTO>> getAllProducts(
@@ -40,7 +40,7 @@ public class ProductController {
             Page<ProductDTO> products = productService.getAllProducts(searchKeyword, pageable);
             return ResponseEntity.ok(products);
         } catch (Exception e) {
-            logger.error("Error fetching all products", e);
+            logger.error("Error fetching all product's", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Page.empty(pageable));
         }
@@ -105,7 +105,7 @@ public class ProductController {
         try {
             if (minPrice != null && minPrice.compareTo(BigDecimal.ZERO) < 0) {
                 logger.warn("Min price is negative");
-                return ResponseEntity.ok(Page.empty(pageable)); // ✅ sửa ở đây
+                return ResponseEntity.ok(Page.empty(pageable));
             }
             if (maxPrice != null && maxPrice.compareTo(BigDecimal.ZERO) < 0) {
                 logger.warn("Max price is negative");
@@ -142,6 +142,28 @@ public class ProductController {
         } catch (Exception e) {
             logger.error("Error fetching product with ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/related")
+    public ResponseEntity<List<ProductDTO>> getRelatedProducts(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "5") int limit) {
+        try {
+            if (id == null || id <= 0) {
+                return ResponseEntity.badRequest().body(List.of());
+            }
+            if (limit <= 0) {
+                return ResponseEntity.badRequest().body(List.of());
+            }
+            List<ProductDTO> relatedProducts = productService.getRelatedProducts(id, limit);
+            return ResponseEntity.ok(relatedProducts);
+        } catch (IllegalArgumentException e) {
+            logger.error("Error fetching related products for product ID: {}", id, e);
+            return ResponseEntity.badRequest().body(List.of());
+        } catch (Exception e) {
+            logger.error("Error fetching related products for product ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
         }
     }
 
@@ -270,23 +292,18 @@ public class ProductController {
     public ResponseEntity<?> addProductImages(
             @PathVariable Long productId,
             @RequestParam("files") List<MultipartFile> files) {
-
         try {
             if (productId == null || productId <= 0) {
                 return ResponseEntity.badRequest().body("ID sản phẩm không hợp lệ");
             }
-
             if (files == null || files.isEmpty()) {
                 return ResponseEntity.badRequest().body("Danh sách ảnh không được trống");
             }
-
             List<ProductImageDTO> savedImages = files.stream()
                     .filter(file -> file != null && !file.isEmpty())
                     .map(file -> productService.addProductImage(productId, file))
                     .collect(Collectors.toList());
-
             return ResponseEntity.status(HttpStatus.CREATED).body(savedImages);
-
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {

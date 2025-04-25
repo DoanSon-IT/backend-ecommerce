@@ -29,7 +29,7 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
     private final InventoryRepository inventoryRepository;
-    private final InventoryLogRepository inventoryLogRepository; // Thêm để ghi log
+    private final InventoryLogRepository inventoryLogRepository;
     private final CloudinaryService cloudinaryService;
 
     // Lấy danh sách sản phẩm với phân trang
@@ -79,17 +79,47 @@ public class ProductService {
         return productRepository.findById(id).map(this::mapToDTOWithDiscountCheck);
     }
 
+    // Lấy sản phẩm tương tự
+    public List<ProductDTO> getRelatedProducts(Long productId, int limit) {
+        if (productId == null || productId <= 0) {
+            throw new IllegalArgumentException("ID sản phẩm không hợp lệ");
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Giới hạn phải lớn hơn 0");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại với ID: " + productId));
+
+        // Tính khoảng giá ±20%
+        BigDecimal currentPrice = getCurrentPrice(product, LocalDateTime.now());
+        BigDecimal minPrice = currentPrice.multiply(BigDecimal.valueOf(0.8));
+        BigDecimal maxPrice = currentPrice.multiply(BigDecimal.valueOf(1.2));
+
+        // Lấy sản phẩm tương tự
+        Pageable pageable = PageRequest.of(0, limit);
+        List<Product> relatedProducts = productRepository.findRelatedProducts(
+                product.getCategory().getId(),
+                productId,
+                minPrice,
+                maxPrice,
+                pageable
+        );
+
+        return relatedProducts.stream()
+                .map(this::mapToDTOWithDiscountCheck)
+                .collect(Collectors.toList());
+    }
+
     public Page<ProductDTO> getFilteredProducts(String searchKeyword, BigDecimal minPrice, BigDecimal maxPrice, String sortBy, Pageable pageable) {
         List<Product> products;
 
-        // Bắt đầu từ danh sách sản phẩm có phân trang cơ bản (hoặc lọc theo tên nếu có)
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
             products = productRepository.findByNameContainingIgnoreCase(searchKeyword.trim(), Pageable.unpaged()).getContent();
         } else {
             products = productRepository.findAll();
         }
 
-        // Lọc theo giá (nếu có)
         LocalDateTime now = LocalDateTime.now();
         if (minPrice != null || maxPrice != null) {
             products = products.stream()
@@ -102,7 +132,6 @@ public class ProductService {
                     .collect(Collectors.toList());
         }
 
-        // Sắp xếp
         switch (sortBy != null ? sortBy.toLowerCase() : "") {
             case "newest":
                 products.sort((a, b) -> b.getId().compareTo(a.getId()));
@@ -118,7 +147,6 @@ public class ProductService {
                 break;
         }
 
-        // Phân trang an toàn
         int start = (int) pageable.getOffset();
         if (start >= products.size()) {
             return new PageImpl<>(List.of(), pageable, products.size());
@@ -132,7 +160,6 @@ public class ProductService {
         return new PageImpl<>(productDTOs, pageable, products.size());
     }
 
-    // Tạo sản phẩm mới
     @Transactional
     public ProductDTO createProduct(Product product) {
         logger.info("Creating product: {}", product.getName());
@@ -142,12 +169,10 @@ public class ProductService {
 
         Product savedProduct = productRepository.save(product);
 
-        // Kiểm tra xem Inventory đã tồn tại chưa
         if (inventoryRepository.existsByProductId(savedProduct.getId())) {
             throw new IllegalStateException("Tồn kho đã tồn tại cho sản phẩm này");
         }
 
-        // Tạo Inventory
         Inventory inventory = new Inventory();
         inventory.setProduct(savedProduct);
         int initialQuantity = product.getStock() != null ? product.getStock() : 0;
@@ -156,23 +181,20 @@ public class ProductService {
         inventoryRepository.save(inventory);
         savedProduct.setInventory(inventory);
 
-        // Tạo log khởi tạo
         InventoryLog log = new InventoryLog();
         log.setProduct(savedProduct);
         log.setOldQuantity(0);
         log.setNewQuantity(initialQuantity);
         log.setReason("Khởi tạo sản phẩm");
-        log.setUserId(1L); // Giả sử userId từ context
+        log.setUserId(1L);
         log.setTimestamp(LocalDateTime.now());
         inventoryLogRepository.save(log);
 
-        // Lưu ảnh sản phẩm
         saveProductImages(savedProduct, product.getImages());
 
         return mapToDTOWithDiscountCheck(savedProduct);
     }
 
-    // Cập nhật sản phẩm
     @Transactional
     public ProductDTO updateProduct(Long id, Product updatedProduct) {
         if (id == null || id <= 0) {
@@ -180,11 +202,9 @@ public class ProductService {
         }
 
         return productRepository.findById(id).map(product -> {
-            // Validate dữ liệu
             validateProduct(updatedProduct);
             validateCategoryAndSupplier(updatedProduct);
 
-            // Cập nhật thông tin sản phẩm
             product.setName(updatedProduct.getName());
             product.setDescription(updatedProduct.getDescription());
             product.setCostPrice(updatedProduct.getCostPrice());
@@ -203,7 +223,6 @@ public class ProductService {
 
             Product savedProduct = productRepository.save(product);
 
-            // Cập nhật Inventory
             Inventory inventory = inventoryRepository.findByProductId(id)
                     .orElseGet(() -> {
                         Inventory newInventory = new Inventory();
@@ -218,14 +237,13 @@ public class ProductService {
             inventoryRepository.save(inventory);
             savedProduct.setInventory(inventory);
 
-            // Tạo log nếu có thay đổi tồn kho
             if (oldQuantity != newQuantity) {
                 InventoryLog log = new InventoryLog();
                 log.setProduct(savedProduct);
                 log.setOldQuantity(oldQuantity);
                 log.setNewQuantity(newQuantity);
                 log.setReason("Cập nhật sản phẩm");
-                log.setUserId(1L); // Giả sử userId từ context
+                log.setUserId(1L);
                 log.setTimestamp(LocalDateTime.now());
                 inventoryLogRepository.save(log);
             }
@@ -234,7 +252,6 @@ public class ProductService {
         }).orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại với ID: " + id));
     }
 
-    // Xóa sản phẩm
     @Transactional
     public void deleteProduct(Long id) {
         if (id == null || id <= 0) {
@@ -247,7 +264,6 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    // Áp dụng giảm giá cho tất cả sản phẩm
     @Transactional
     public void applyDiscountToAll(BigDecimal percentage, BigDecimal fixedAmount, LocalDateTime startDateTime, LocalDateTime endDateTime) {
         if (percentage == null && fixedAmount == null) {
@@ -282,7 +298,6 @@ public class ProductService {
         logger.info("Đã áp dụng giảm giá cho {} sản phẩm", products.size());
     }
 
-    // Áp dụng giảm giá cho danh sách sản phẩm
     @Transactional
     public void applyDiscountToSelected(List<Long> productIds, BigDecimal percentage, BigDecimal fixedAmount, LocalDateTime startDateTime, LocalDateTime endDateTime) {
         if (productIds == null || productIds.isEmpty()) {
@@ -314,9 +329,8 @@ public class ProductService {
         productRepository.saveAll(products);
     }
 
-    // Xóa giảm giá hết hạn (Scheduled task)
     @Transactional
-    @Scheduled(cron = "0 * * * * *") // Mỗi phút
+    @Scheduled(cron = "0 * * * * *")
     public void clearExpiredDiscounts() {
         LocalDateTime now = LocalDateTime.now();
         List<Product> expiredProducts = productRepository.findByDiscountEndDateBefore(now);
@@ -331,7 +345,6 @@ public class ProductService {
         }
     }
 
-    // Thêm ảnh sản phẩm
     @Transactional
     public ProductImageDTO addProductImage(Long productId, MultipartFile file) {
         if (productId == null || productId <= 0) {
@@ -355,7 +368,6 @@ public class ProductService {
         return mapProductImageToDTO(productImageRepository.save(productImage));
     }
 
-    // Xóa ảnh sản phẩm
     @Transactional
     public void deleteProductImage(Long imageId) {
         if (imageId == null || imageId <= 0) {
@@ -367,7 +379,6 @@ public class ProductService {
         productImageRepository.delete(productImage);
     }
 
-    // Validate dữ liệu sản phẩm
     private void validateProduct(Product product) {
         if (product == null) {
             throw new IllegalArgumentException("Thông tin sản phẩm không được trống");
@@ -389,7 +400,6 @@ public class ProductService {
         }
     }
 
-    // Validate danh mục và nhà cung cấp
     private void validateCategoryAndSupplier(Product product) {
         if (product.getCategory() == null || product.getCategory().getId() == null) {
             throw new IllegalArgumentException("Danh mục là bắt buộc");
@@ -405,7 +415,6 @@ public class ProductService {
         }
     }
 
-    // Tính giá giảm
     private BigDecimal calculateDiscount(BigDecimal originalPrice, BigDecimal percentage, BigDecimal fixedAmount) {
         if (originalPrice == null) {
             throw new IllegalArgumentException("Giá gốc không được trống");
@@ -424,7 +433,6 @@ public class ProductService {
         return discounted.max(BigDecimal.ZERO);
     }
 
-    // Lưu ảnh sản phẩm
     private void saveProductImages(Product product, List<ProductImage> images) {
         if (images == null || images.isEmpty()) {
             logger.info("📸 Không có ảnh để lưu cho sản phẩm: {}", product.getName());
@@ -441,7 +449,6 @@ public class ProductService {
         }
     }
 
-    // Ánh xạ Product sang DTO
     private ProductDTO mapToDTOWithDiscountCheck(Product product) {
         LocalDateTime now = LocalDateTime.now();
         BigDecimal currentPrice = getCurrentPrice(product, now);
@@ -477,7 +484,6 @@ public class ProductService {
                 .build();
     }
 
-    // Tính giá hiện tại (ưu tiên giá giảm nếu có)
     private BigDecimal getCurrentPrice(Product product, LocalDateTime now) {
         if (product.getDiscountedPrice() != null &&
                 product.getDiscountStartDate() != null &&
@@ -489,7 +495,6 @@ public class ProductService {
         return product.getSellingPrice();
     }
 
-    // Ánh xạ Category sang DTO
     private CategoryDTO mapCategoryToDTO(Category category) {
         return CategoryDTO.builder()
                 .id(category.getId())
@@ -497,7 +502,6 @@ public class ProductService {
                 .build();
     }
 
-    // Ánh xạ Supplier sang DTO
     private SupplierDTO mapSupplierToDTO(Supplier supplier) {
         return SupplierDTO.builder()
                 .id(supplier.getId())
@@ -508,7 +512,6 @@ public class ProductService {
                 .build();
     }
 
-    // Ánh xạ ProductImage sang DTO
     private ProductImageDTO mapProductImageToDTO(ProductImage image) {
         return ProductImageDTO.builder()
                 .id(image.getId())

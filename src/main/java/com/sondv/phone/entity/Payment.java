@@ -28,7 +28,7 @@ public class Payment {
     @Column(nullable = false, length = 20)
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(unique = true)
+    @Column(name = "transaction_id")
     private String transactionId;
 
     @Column(nullable = false)

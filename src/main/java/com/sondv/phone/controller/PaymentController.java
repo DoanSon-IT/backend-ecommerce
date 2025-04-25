@@ -2,8 +2,10 @@ package com.sondv.phone.controller;
 
 import com.sondv.phone.dto.PaymentRequest;
 import com.sondv.phone.dto.PaymentUpdateRequest;
+import com.sondv.phone.repository.PaymentRepository;
 import com.sondv.phone.entity.*;
 import com.sondv.phone.service.MomoService;
+import com.sondv.phone.service.OrderService;
 import com.sondv.phone.service.PaymentService;
 import com.sondv.phone.service.VNPayService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,11 +29,18 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final VNPayService vnPayService;
     private final MomoService momoService;
+    private final PaymentRepository paymentRepository;
+    private final OrderService orderService;
     private static final Logger log = LoggerFactory.getLogger(PaymentController.class);
 
     @PreAuthorize("hasAuthority('CUSTOMER')")
     @PostMapping
     public ResponseEntity<Map<String, String>> createPayment(@RequestBody PaymentRequest paymentRequest, Authentication authentication) {
+        if (paymentRequest.getMethod() == null) {
+            log.error("Payment method is null in request: {}", paymentRequest);
+            return ResponseEntity.badRequest().body(Map.of("message", "Phương thức thanh toán không được để trống"));
+        }
+
         User user = (User) authentication.getPrincipal();
         Order order = paymentService.getOrderById(paymentRequest.getOrderId());
 
@@ -39,98 +48,143 @@ public class PaymentController {
             return ResponseEntity.status(403).build();
         }
 
-        Payment payment = paymentService.createPayment(order.getId(), paymentRequest.getMethod());
-        String paymentUrl;
+        try {
+            log.info("Creating payment for orderId: {}, method: {}", paymentRequest.getOrderId(), paymentRequest.getMethod());
+            Payment payment = paymentService.createPayment(order.getId(), paymentRequest.getMethod());
+            String paymentUrl;
 
-        switch (paymentRequest.getMethod()) {
-            case VNPAY:
-                paymentUrl = vnPayService.createVNPayPayment(payment.getId(), order.getTotalPrice().doubleValue());
-                break;
-            case MOMO:
-                paymentUrl = momoService.createMomoPayment(payment.getId(), order.getTotalPrice().doubleValue());
-                break;
-            case COD:
-                paymentService.updatePaymentStatus(order.getId(), PaymentStatus.AWAITING_DELIVERY, null);
-                paymentUrl = "/order-confirmation";
-                break;
-            default:
-                return ResponseEntity.badRequest().build();
+            switch (paymentRequest.getMethod()) {
+                case VNPAY:
+                    paymentService.updatePaymentStatus(order.getId(), PaymentStatus.PROCESSING, null);
+                    paymentUrl = vnPayService.createPayment(payment.getId(), order.getTotalPrice().doubleValue());
+                    break;
+                case COD:
+                    paymentService.updatePaymentStatus(order.getId(), PaymentStatus.AWAITING_DELIVERY, payment.getTransactionId());
+                    orderService.confirmOrder(order.getId(), user);
+                    paymentUrl = "/order-confirmation";
+                    break;
+                case MOMO:
+                    return ResponseEntity.badRequest().body(Map.of("message", "Phương thức Momo chưa được hỗ trợ"));
+                default:
+                    return ResponseEntity.badRequest().body(Map.of("message", "Phương thức thanh toán không hợp lệ"));
+            }
+
+            Map<String, String> response = new HashMap<>();
+            response.put("paymentUrl", paymentUrl);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Error creating payment: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
-
-        Map<String, String> response = new HashMap<>();
-        response.put("paymentUrl", paymentUrl);
-        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/vnpay-return")
-    public void handleVNPayCallback(@RequestParam Map<String, String> params, HttpServletResponse response) throws IOException {
+    @PreAuthorize("hasAuthority('CUSTOMER') or hasAuthority('ADMIN')")
+    public void handleVNPayCallback(@RequestParam Map<String, String> params, HttpServletResponse response, Authentication authentication) throws IOException {
         String vnp_ResponseCode = params.get("vnp_ResponseCode");
         String vnp_TxnRef = params.get("vnp_TxnRef");
+        String vnp_TransactionNo = params.get("vnp_TransactionNo");
+        String vnp_SecureHash = params.get("vnp_SecureHash");
 
-        if ("00".equals(vnp_ResponseCode)) {
-            // Cập nhật trạng thái thanh toán sang PAID
-            paymentService.updatePaymentStatus(Long.valueOf(vnp_TxnRef), PaymentStatus.PAID, vnp_TxnRef);
-            // Redirect đến trang thành công
-            response.sendRedirect("/order-confirmation?txnRef=" + vnp_TxnRef);
-        } else {
-            // Redirect đến trang lỗi
-            response.sendRedirect("/payment-failed?code=" + vnp_ResponseCode);
+        log.info("VNPay callback received: TxnRef={}, ResponseCode={}, TransactionNo={}", vnp_TxnRef, vnp_ResponseCode, vnp_TransactionNo);
+
+        if (!vnPayService.validateCallback(params)) {
+            log.error("Invalid secure hash for TxnRef={}. Possible configuration issue with VNPay secret key.", vnp_TxnRef);
+            response.sendRedirect("/payment-failed?code=99&message=invalid_hash");
+            return;
+        }
+
+        try {
+            Long paymentId = Long.valueOf(vnp_TxnRef);
+            Payment payment = paymentService.getPaymentById(paymentId);
+
+            User user = (User) authentication.getPrincipal();
+            if (!payment.getOrder().getCustomer().getUser().getId().equals(user.getId()) &&
+                    !user.getRoles().contains("ADMIN")) {
+                log.error("User {} attempted to access payment {} without permission", user.getId(), paymentId);
+                response.sendRedirect("/payment-failed?code=403&message=unauthorized");
+                return;
+            }
+
+            // Kiểm tra trạng thái hiện tại để xử lý trùng lặp
+            if (payment.getTransactionId() != null && payment.getTransactionId().equals(vnp_TransactionNo)) {
+                log.warn("Duplicate transaction for TxnRef={}, TransactionNo={}. Current status: {}", vnp_TxnRef, vnp_TransactionNo, payment.getStatus());
+                if (payment.getStatus() == PaymentStatus.PAID) {
+                    response.sendRedirect("/order-confirmation");
+                } else {
+                    response.sendRedirect("/payment-failed?code=99&message=duplicate_transaction");
+                }
+                return;
+            }
+
+            PaymentStatus status = "00".equals(vnp_ResponseCode) ? PaymentStatus.PAID : PaymentStatus.FAILED;
+            log.info("Updating payment status for TxnRef={} to {}", vnp_TxnRef, status);
+            paymentService.updatePaymentStatus(payment.getOrder().getId(), status, vnp_TransactionNo);
+
+            if (status == PaymentStatus.PAID) {
+                log.info("Confirming order for payment TxnRef={}", vnp_TxnRef);
+                orderService.confirmOrder(payment.getOrder().getId(), user);
+                response.sendRedirect("/order-confirmation");
+            } else {
+                log.warn("Payment failed for TxnRef={}. ResponseCode={}", vnp_TxnRef, vnp_ResponseCode);
+                response.sendRedirect("/payment-failed?code=" + vnp_ResponseCode + "&message=payment_failed");
+            }
+        } catch (NumberFormatException e) {
+            log.error("Invalid paymentId format for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            response.sendRedirect("/payment-failed?code=99&message=invalid_payment_id");
+        } catch (RuntimeException e) {
+            log.error("Payment not found for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            response.sendRedirect("/payment-failed?code=99&message=payment_not_found");
+        } catch (Exception e) {
+            log.error("Error processing VNPay callback for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            response.sendRedirect("/payment-failed?code=99&message=processing_error");
         }
     }
 
     @PostMapping("/vnpay-ipn")
     public ResponseEntity<Map<String, String>> handleVNPayIPN(@RequestParam Map<String, String> params) {
-        // Xác thực hash
-        String vnp_SecureHash = params.get("vnp_SecureHash");
-        String calculatedHash = vnPayService.calculateSecureHash(params);
-        if (!calculatedHash.equals(vnp_SecureHash)) {
-            log.error("Invalid secure hash");
-            Map<String, String> response = new HashMap<>();
-            response.put("Rspcode", "01");
-            response.put("Message", "Invalid secure hash");
-            return ResponseEntity.ok(response);
-        }
-
-        // Lấy thông tin giao dịch
         String vnp_TxnRef = params.get("vnp_TxnRef");
+        String vnp_TransactionNo = params.get("vnp_TransactionNo");
         String vnp_ResponseCode = params.get("vnp_ResponseCode");
 
-        // Chuyển đổi vnp_TxnRef từ String sang Long (vì đây là paymentId)
-        Long paymentId;
+        log.info("VNPay IPN received: TxnRef={}, ResponseCode={}, TransactionNo={}", vnp_TxnRef, vnp_ResponseCode, vnp_TransactionNo);
+
+        if (!vnPayService.validateCallback(params)) {
+            log.error("Invalid secure hash for TxnRef={}. Possible configuration issue with VNPay secret key.", vnp_TxnRef);
+            return ResponseEntity.ok(Map.of("Rspcode", "01", "Message", "Invalid secure hash"));
+        }
+
         try {
-            paymentId = Long.parseLong(vnp_TxnRef);
+            Long paymentId = Long.parseLong(vnp_TxnRef);
+            Payment payment = paymentService.getPaymentById(paymentId);
+
+            if (payment.getTransactionId() != null && payment.getTransactionId().equals(vnp_TransactionNo)) {
+                log.warn("Duplicate transaction for TxnRef={}, TransactionNo={}. Current status: {}", vnp_TxnRef, vnp_TransactionNo, payment.getStatus());
+                return ResponseEntity.ok(Map.of("Rspcode", "00", "Message", "success"));
+            }
+
+            PaymentStatus status = "00".equals(vnp_ResponseCode) ? PaymentStatus.PAID : PaymentStatus.FAILED;
+            log.info("Updating payment status for TxnRef={} to {}", vnp_TxnRef, status);
+            paymentService.updatePaymentStatus(payment.getOrder().getId(), status, vnp_TransactionNo);
+
+            if (status == PaymentStatus.PAID) {
+                log.info("Confirming order for payment TxnRef={}", vnp_TxnRef);
+                orderService.confirmOrder(payment.getOrder().getId(), null);
+            } else {
+                log.warn("Payment failed for TxnRef={}. ResponseCode={}", vnp_TxnRef, vnp_ResponseCode);
+            }
+
+            return ResponseEntity.ok(Map.of("Rspcode", "00", "Message", "success"));
         } catch (NumberFormatException e) {
-            log.error("Invalid transaction reference: {}", vnp_TxnRef);
-            Map<String, String> response = new HashMap<>();
-            response.put("Rspcode", "01");
-            response.put("Message", "Invalid transaction reference");
-            return ResponseEntity.ok(response);
+            log.error("Invalid transaction reference for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            return ResponseEntity.ok(Map.of("Rspcode", "01", "Message", "Invalid transaction reference"));
+        } catch (RuntimeException e) {
+            log.error("Payment not found for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            return ResponseEntity.ok(Map.of("Rspcode", "01", "Message", "Payment not found"));
+        } catch (Exception e) {
+            log.error("Error processing VNPay IPN for TxnRef={}: {}", vnp_TxnRef, e.getMessage());
+            return ResponseEntity.ok(Map.of("Rspcode", "01", "Message", "Processing error"));
         }
-
-        // Lấy đối tượng Payment từ paymentId
-        Payment payment = paymentService.getPaymentById(paymentId);
-        if (payment == null) {
-            log.error("Payment not found for id: {}", paymentId);
-            Map<String, String> response = new HashMap<>();
-            response.put("Rspcode", "01");
-            response.put("Message", "Payment not found");
-            return ResponseEntity.ok(response);
-        }
-
-        // Lấy orderId từ đối tượng Payment
-        Long orderId = payment.getOrder().getId();
-
-        // Xác định trạng thái thanh toán
-        PaymentStatus status = "00".equals(vnp_ResponseCode) ? PaymentStatus.PAID : PaymentStatus.FAILED;
-
-        // Cập nhật trạng thái thanh toán
-        paymentService.updatePaymentStatus(orderId, status, vnp_TxnRef);
-
-        // Trả về phản hồi JSON
-        Map<String, String> response = new HashMap<>();
-        response.put("Rspcode", "00");
-        response.put("Message", "success");
-        return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAuthority('CUSTOMER')")
@@ -145,24 +199,26 @@ public class PaymentController {
             return ResponseEntity.status(403).build();
         }
 
+        if (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.AWAITING_DELIVERY) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Thanh toán đã hoàn tất hoặc đang chờ giao hàng"));
+        }
+
         String paymentUrl;
         switch (payment.getPaymentMethod()) {
             case VNPAY:
-                paymentUrl = vnPayService.createVNPayPayment(payment.getId(), order.getTotalPrice().doubleValue());
-                break;
-            case MOMO:
-                paymentUrl = momoService.createMomoPayment(payment.getId(), order.getTotalPrice().doubleValue());
+                paymentService.updatePaymentStatus(orderId, PaymentStatus.PROCESSING, null);
+                paymentUrl = vnPayService.createPayment(payment.getId(), order.getTotalPrice().doubleValue());
                 break;
             case COD:
                 paymentUrl = "/order-confirmation";
                 break;
+            case MOMO:
+                return ResponseEntity.badRequest().body(Map.of("message", "Phương thức Momo chưa được hỗ trợ"));
             default:
                 return ResponseEntity.badRequest().build();
         }
 
-        Map<String, String> response = new HashMap<>();
-        response.put("paymentUrl", paymentUrl);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
     }
 
     @PreAuthorize("hasAuthority('CUSTOMER') or hasAuthority('ADMIN')")

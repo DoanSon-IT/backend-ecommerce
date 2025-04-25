@@ -36,7 +36,7 @@ public class OrderService {
     private final ShippingService shippingService;
     private final PaymentRepository paymentRepository;
 
-    private static final Logger logger = LoggerFactory.getLogger(OrderService.class); // Thêm logger
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
     @Transactional
     public Order createOrder(User user, OrderRequest orderRequest) {
@@ -139,7 +139,6 @@ public class OrderService {
         shippingInfo.setPhoneNumber(orderRequest.getPhoneNumber());
         shippingInfo.setCarrier(orderRequest.getCarrier());
 
-        // Tính shippingFee và estimatedDelivery từ ShippingService
         ShippingEstimateDTO estimate = shippingService.estimateShipping(
                 orderRequest.getAddress(),
                 orderRequest.getCarrier()
@@ -148,7 +147,6 @@ public class OrderService {
         shippingInfo.setEstimatedDelivery(estimate.getEstimatedDelivery());
         order.setShippingInfo(shippingInfo);
 
-        // Tổng tiền cuối cùng
         BigDecimal shippingFee = estimate.getFee() != null ? estimate.getFee() : BigDecimal.ZERO;
         BigDecimal finalTotal = totalPriceBeforeDiscount.subtract(discountAmount).add(shippingFee);
 
@@ -158,7 +156,6 @@ public class OrderService {
             order.setDiscount(appliedDiscount);
         }
 
-        // Chuẩn hóa paymentMethod
         PaymentMethod paymentMethod;
         try {
             paymentMethod = orderRequest.getPaymentMethod() != null
@@ -168,10 +165,8 @@ public class OrderService {
             throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ: " + orderRequest.getPaymentMethod());
         }
 
-        // Lưu Order
         order = orderRepository.save(order);
 
-        // Tạo Payment
         Payment payment = new Payment();
         payment.setOrder(order);
         payment.setPaymentMethod(paymentMethod);
@@ -203,11 +198,15 @@ public class OrderService {
             throw new RuntimeException("Bạn không có quyền hủy đơn hàng này!");
         }
 
-        if (!(order.getStatus() == OrderStatus.PENDING )) {
+        if (!(order.getStatus() == OrderStatus.PENDING)) {
             throw new RuntimeException("Đơn hàng này không thể hủy ở trạng thái hiện tại!");
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
+            payment.setStatus(PaymentStatus.CANCELLED);
+            paymentRepository.save(payment);
+        });
         orderRepository.save(order);
 
         for (OrderDetail detail : order.getOrderDetails()) {
@@ -228,7 +227,6 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng!"));
 
         if (status == OrderStatus.COMPLETED) {
-            // Điều chỉnh inventory
             for (OrderDetail detail : order.getOrderDetails()) {
                 inventoryService.adjustInventory(
                         detail.getProduct().getId(),
@@ -237,16 +235,33 @@ public class OrderService {
                         user.getId()
                 );
             }
-            // Cộng 1000 điểm
             Customer customer = order.getCustomer();
             int currentPoints = customer.getLoyaltyPoints() != null ? customer.getLoyaltyPoints() : 0;
             customer.setLoyaltyPoints(currentPoints + 1000);
             customerRepository.save(customer);
             logger.info("Cộng 1000 điểm cho khách hàng {} (ID: {}). Tổng điểm hiện tại: {}",
                     customer.getUser().getFullName(), customer.getId(), customer.getLoyaltyPoints());
+
+            paymentRepository.findByOrderId(orderId).ifPresent(payment -> {
+                if (payment.getPaymentMethod() == PaymentMethod.COD) {
+                    payment.setStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
+                }
+            });
         }
 
         order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public Order confirmOrder(Long orderId, User user) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng!"));
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalStateException("Đơn hàng không ở trạng thái PENDING!");
+        }
+        order.setStatus(OrderStatus.CONFIRMED);
         return orderRepository.save(order);
     }
 
@@ -315,13 +330,15 @@ public class OrderService {
         dto.setTotalPrice(order.getTotalPrice());
         dto.setShippingFee(order.getShippingFee());
 
-        // Lấy paymentMethod từ Payment
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
         if (payment != null) {
             dto.setPaymentMethod(payment.getPaymentMethod().name());
+            dto.setPaymentStatus(payment.getStatus().name());
+        } else {
+            dto.setPaymentMethod("UNKNOWN");
+            dto.setPaymentStatus("PENDING");
         }
 
-        // Các phần ánh xạ khác (customer, shippingInfo, orderDetails) giữ nguyên
         if (order.getCustomer() != null && order.getCustomer().getUser() != null) {
             CustomerInfoDTO customerDTO = new CustomerInfoDTO();
             customerDTO.setFullName(order.getCustomer().getUser().getFullName());

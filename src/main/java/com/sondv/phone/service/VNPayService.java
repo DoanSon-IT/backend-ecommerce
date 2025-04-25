@@ -1,5 +1,6 @@
 package com.sondv.phone.service;
 
+import com.sondv.phone.repository.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,21 +16,36 @@ import java.util.*;
 @Service
 public class VNPayService {
 
-    @Value("${VNPAY_TMN_CODE}")
-    private String vnp_TmnCode;
-
-    @Value("${VNPAY_HASH_SECRET}")
-    private String vnp_HashSecret;
-
-    @Value("${VNPAY_PAY_URL}")
-    private String vnp_PayUrl;
-
-    @Value("${VNPAY_RETURN_URL}")
-    private String vnp_ReturnUrl;
+    private final String vnp_TmnCode;
+    private final String vnp_HashSecret;
+    private final String vnp_PayUrl;
+    private final String vnp_ReturnUrl;
+    private final PaymentRepository paymentRepository;
 
     private static final Logger log = LoggerFactory.getLogger(VNPayService.class);
 
-    public String createVNPayPayment(Long paymentId, double amount) {
+    public VNPayService(PaymentRepository paymentRepository,
+                        @Value("${VNPAY_TMN_CODE}") String vnp_TmnCode,
+                        @Value("${VNPAY_HASH_SECRET}") String vnp_HashSecret,
+                        @Value("${VNPAY_PAY_URL}") String vnp_PayUrl,
+                        @Value("${VNPAY_RETURN_URL}") String vnp_ReturnUrl) {
+        this.paymentRepository = paymentRepository;
+        this.vnp_TmnCode = vnp_TmnCode;
+        this.vnp_HashSecret = vnp_HashSecret;
+        this.vnp_PayUrl = vnp_PayUrl;
+        this.vnp_ReturnUrl = vnp_ReturnUrl;
+    }
+
+    /**
+     * Tạo URL thanh toán cho VNPay.
+     * @param paymentId ID của thanh toán
+     * @param amount Số tiền thanh toán
+     * @return URL thanh toán
+     */
+    public String createPayment(Long paymentId, double amount) {
+        paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thanh toán với ID: " + paymentId));
+
         try {
             String vnp_Version = "2.1.0";
             String vnp_Command = "pay";
@@ -90,7 +106,30 @@ public class VNPayService {
         }
     }
 
-    // Phương thức mới để tính toán hash cho callback
+    /**
+     * Xác thực callback từ VNPay.
+     * @param params Các tham số từ callback
+     * @return true nếu hợp lệ, false nếu không
+     */
+    public boolean validateCallback(Map<String, String> params) {
+        try {
+            String vnp_SecureHash = params.get("vnp_SecureHash");
+            Map<String, String> vnpParams = new HashMap<>(params);
+            vnpParams.remove("vnp_SecureHash");
+            vnpParams.remove("vnp_SecureHashType");
+            String calculatedHash = calculateSecureHash(vnpParams);
+            return calculatedHash.equals(vnp_SecureHash);
+        } catch (Exception e) {
+            log.error("Error validating VNPay callback: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Tính toán secure hash cho các tham số VNPay.
+     * @param params Các tham số cần tính hash
+     * @return Chuỗi hash
+     */
     public String calculateSecureHash(Map<String, String> params) {
         try {
             List<String> fieldNames = new ArrayList<>(params.keySet());

@@ -63,7 +63,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p.name FROM Product p")
     List<String> findAllProductNames();
 
-    // Thêm vào ProductRepository.java
     @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Product> findByNameContainingFlexible(@Param("keyword") String keyword);
 
@@ -75,4 +74,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<Product> findByNameContainingIgnoreCase(@Param("keyword") String keyword);
+
+    @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.id != :productId AND p.sellingPrice BETWEEN :minPrice AND :maxPrice ORDER BY p.soldQuantity DESC")
+    List<Product> findRelatedProducts(@Param("categoryId") Long categoryId, @Param("productId") Long productId, @Param("minPrice") BigDecimal minPrice, @Param("maxPrice") BigDecimal maxPrice, Pageable pageable);
 }

@@ -42,26 +42,21 @@ public class OrderController {
     public ResponseEntity<Order> createOrder(@RequestBody OrderRequest orderRequest, Authentication authentication) {
         User user = (User) authentication.getPrincipal();
 
-        // Cập nhật address, phoneNumber vào User
-        if (user.getAddress() == null || user.getPhone() == null) {
+        // Cập nhật address và phone nếu chưa có (phù hợp với OAuth2)
+        boolean updated = false;
+        if (user.getAddress() == null || user.getAddress().isBlank()) {
             user.setAddress(orderRequest.getAddress());
+            updated = true;
+        }
+        if (user.getPhone() == null || user.getPhone().isBlank()) {
             user.setPhone(orderRequest.getPhoneNumber());
+            updated = true;
+        }
+        if (updated) {
             userRepository.save(user);
         }
 
-        // Tạo Order
         Order order = orderService.createOrder(user, orderRequest);
-
-        // Tính phí và thời gian giao hàng
-        ShippingEstimateDTO estimate = shippingService.estimateShipping(
-                orderRequest.getAddress(),
-                orderRequest.getCarrier()
-        );
-
-        order.setShippingFee(estimate.getFee());
-        order.setStatus(OrderStatus.PENDING);
-        orderRepository.save(order);
-
         return ResponseEntity.ok(order);
     }
 
