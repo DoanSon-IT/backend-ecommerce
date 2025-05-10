@@ -6,6 +6,7 @@ import com.sondv.phone.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -79,6 +80,7 @@ public class ReviewService {
         productRepository.save(product);
     }
 
+    @Cacheable(value = "pagedReviews", key = "#productId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<ReviewResponse> getPagedReviews(Long productId, Pageable pageable) {
         return reviewRepository.findByOrderDetail_Product_Id(productId, pageable)
                 .map(review -> {
@@ -93,15 +95,18 @@ public class ReviewService {
                 });
     }
 
+    @Cacheable(value = "averageRating", key = "#productId")
     public Double getAverageRating(Long productId) {
         Double avg = reviewRepository.findAverageRatingByProductId(productId);
         return avg != null ? avg : 0.0;
     }
 
+    @Cacheable(value = "reviewCount", key = "#productId")
     public Long getReviewCount(Long productId) {
         return reviewRepository.countReviewsByProductId(productId);
     }
 
+    @Cacheable(value = "reviewsByProduct", key = "#productId")
     public List<Review> getReviewsByProduct(Long productId) {
         return reviewRepository.findAllByProductId(productId);
     }

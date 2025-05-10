@@ -6,7 +6,10 @@ import com.sondv.phone.entity.Discount;
 import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.DiscountRepository;
 import com.sondv.phone.repository.ProductRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,8 @@ public class DiscountService {
     private final DiscountRepository discountRepository;
     private final ProductRepository productRepository;
 
+    @Transactional
+    @CacheEvict(value = "activeDiscounts", allEntries = true)
     public Discount createDiscount(Discount discount) {
         return discountRepository.save(discount);
     }
@@ -36,6 +41,7 @@ public class DiscountService {
         return discountRepository.findAll();
     }
 
+    @Cacheable(value = "activeDiscounts")
     public Page<Discount> getActiveDiscounts(Double minPercentage, Pageable pageable) {
         OffsetDateTime now = OffsetDateTime.now();
         return discountRepository.findActiveDiscountsWithMinPercentage(now, minPercentage, pageable);
@@ -45,6 +51,8 @@ public class DiscountService {
         return discountRepository.findByCode(code);
     }
 
+    @Transactional
+    @CacheEvict(value = "activeDiscounts", allEntries = true)
     public Discount updateDiscount(Long id, Discount updatedDiscount) {
         Discount existing = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found"));
@@ -59,6 +67,8 @@ public class DiscountService {
         return discountRepository.save(existing);
     }
 
+    @Transactional
+    @CacheEvict(value = "activeDiscounts", allEntries = true)
     public void deleteDiscount(Long id) {
         discountRepository.deleteById(id);
     }

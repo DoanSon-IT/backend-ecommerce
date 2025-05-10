@@ -36,6 +36,7 @@ public class ChatbotService {
     private final MessageRepository messageRepository;
     private final OpenAiClient openAiClient;
 
+    private static final int MAX_PRODUCTS_SUGGESTED = 3;
     private final Long BOT_ID = 0L;
     private final Locale locale = new Locale("vi", "VN");
     private final Random random = new Random();
@@ -73,106 +74,129 @@ public class ChatbotService {
         long messageCount = messageRepository.countBySenderId(userId);
         boolean isNewUser = messageCount <= 2;
 
-        String aiReply;
         List<Long> productIds = new ArrayList<>();
+        String aiReply;
 
         String intent = detectIntent(userMessage);
         String extractedKeyword = extractProductKeyword(userMessage);
 
+        // Nếu greeting nhưng có sản phẩm thì chuyển sang product_inquiry
         if (intent.equals("greeting") && intentPatterns.get("product_inquiry").matcher(userMessage).matches()) {
             intent = "product_inquiry";
             logger.info("Phát hiện lời chào kèm sản phẩm, chuyển sang product_inquiry: {}", extractedKeyword);
         }
 
+        // Load config messages
         List<String> greetings = (List<String>) config.get("greetings");
         List<String> promotions = (List<String>) config.get("promotions");
         Map<String, String> promptTemplates = (Map<String, String>) config.get("prompt_templates");
 
-        if (intent.equals("greeting")) {
-            String greeting = getRandomMessage(greetings);
-            if (isNewUser) {
-                greeting = timeGreeting + greeting.substring(greeting.indexOf(" ")) + " Rất vui được phục vụ anh/chị lần đầu! 🌟";
+        switch (intent) {
+            case "greeting" -> {
+                String greeting = getRandomMessage(greetings);
+                if (isNewUser) {
+                    greeting = timeGreeting + greeting.substring(greeting.indexOf(" ")) + " Rất vui được phục vụ anh/chị lần đầu! 🌟";
+                }
+                aiReply = greeting;
             }
-            aiReply = greeting;
+            case "promotion" -> aiReply = getRandomMessage(promotions);
 
-        } else if (intent.equals("promotion")) {
-            aiReply = getRandomMessage(promotions);
-
-        } else if (intent.equals("price_inquiry")) {
-            List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
-            if (!matchedProducts.isEmpty()) {
-                productIds = matchedProducts.stream().map(Product::getId).collect(Collectors.toList());
-                String prompt = buildPriceInquiryPrompt(userMessage, matchedProducts, promptTemplates.get("price_inquiry"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                aiReply = "Hiện em chưa có thông tin giá về sản phẩm \"" + extractedKeyword + "\" ạ. Anh/chị muốn tìm hiểu về sản phẩm khác không? Hoặc cho phép em giới thiệu một số mẫu điện thoại đang được ưa chuộng.";
-            }
-
-        } else if (intent.equals("comparison")) {
-            String[] keywords = extractComparisonKeywords(userMessage);
-            List<Product> products1 = productRepository.findTop2ByNameContainingIgnoreCase(keywords[0]);
-            List<Product> products2 = productRepository.findTop2ByNameContainingIgnoreCase(keywords[1]);
-            if (!products1.isEmpty() && !products2.isEmpty()) {
-                productIds.add(products1.get(0).getId());
-                productIds.add(products2.get(0).getId());
-                String prompt = buildComparisonPrompt(userMessage, products1, products2, promptTemplates.get("comparison"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                aiReply = "Dạ em chưa có đủ thông tin để so sánh giữa \"" + keywords[0] + "\" và \"" + keywords[1] + "\" ạ. Anh/chị có thể cho em biết cụ thể hơn về dòng sản phẩm hoặc model mà anh/chị muốn so sánh không ạ?";
-            }
-
-        } else if (intent.equals("feature_inquiry")) {
-            List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
-            if (!matchedProducts.isEmpty()) {
-                productIds = matchedProducts.stream().map(Product::getId).collect(Collectors.toList());
-                String featureType = detectFeatureType(userMessage);
-                String prompt = buildFeatureInquiryPrompt(userMessage, matchedProducts, featureType, promptTemplates.get("feature_inquiry"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                aiReply = "Dạ em chưa có thông tin chi tiết về tính năng của \"" + extractedKeyword + "\" ạ. Anh/chị muốn tìm hiểu sản phẩm khác không ạ?";
-            }
-
-        } else if (intent.equals("budget_inquiry")) {
-            BigDecimal maxPrice = extractBudget(userMessage);
-            List<Product> matchedProducts = productRepository.findBySellingPriceLessThan(maxPrice);
-            if (!matchedProducts.isEmpty()) {
-                matchedProducts.sort((p1, p2) -> p2.getSellingPrice().compareTo(p1.getSellingPrice()));
-                List<Product> topProducts = matchedProducts.stream().limit(5).collect(Collectors.toList());
-                productIds = topProducts.stream().map(Product::getId).collect(Collectors.toList());
-                String prompt = buildBudgetInquiryPrompt(userMessage, topProducts, promptTemplates.get("budget_inquiry"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                aiReply = "Hiện không có sản phẩm nào trong tầm giá " + formatCurrency(maxPrice) + " ạ. Anh/chị có muốn xem các sản phẩm giá cao hơn một chút không ạ? Shop có nhiều chương trình trả góp ưu đãi đấy ạ.";
-            }
-
-        } else if (intent.equals("best_seller")) {
-            List<Product> topSelling = productRepository.findTop3ByOrderBySoldQuantityDesc();
-            if (!topSelling.isEmpty()) {
-                productIds = topSelling.stream().map(Product::getId).collect(Collectors.toList());
-                String prompt = buildBestSellerPrompt(userMessage, topSelling, promptTemplates.get("best_seller"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                aiReply = """
-                    Dạ rất tiếc hiện tại em chưa có đủ dữ liệu về sản phẩm bán chạy 😭
-                    Nhưng shop có nhiều mẫu hot đang được khách hàng quan tâm. Anh/chị muốn tư vấn theo phân khúc giá nào không ạ? 📱
-                    """;
-            }
-
-        } else {
-            List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
-            if (!matchedProducts.isEmpty()) {
-                productIds = matchedProducts.stream().map(Product::getId).collect(Collectors.toList());
-                String prompt = buildProductInquiryPrompt(userMessage, matchedProducts, isNewUser, promptTemplates.get("product_inquiry"));
-                aiReply = openAiClient.ask(prompt);
-            } else {
-                List<Product> similarProducts = findSimilarProducts(extractedKeyword);
-                if (!similarProducts.isEmpty()) {
-                    productIds = similarProducts.stream().map(Product::getId).collect(Collectors.toList());
-                    String prompt = buildSimilarProductPrompt(userMessage, similarProducts, extractedKeyword, promptTemplates.get("product_inquiry"));
+            case "price_inquiry" -> {
+                List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
+                if (!matchedProducts.isEmpty()) {
+                    productIds = matchedProducts.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                    String prompt = buildPriceInquiryPrompt(userMessage, matchedProducts, promptTemplates.get("price_inquiry"));
                     aiReply = openAiClient.ask(prompt);
                 } else {
-                    String prompt = buildNoProductPrompt(userMessage, isNewUser, promptTemplates.get("product_inquiry"));
+                    aiReply = "Hiện em chưa có thông tin giá về sản phẩm \"" + extractedKeyword + "\" ạ. Anh/chị muốn tìm hiểu về sản phẩm khác không?";
+                }
+            }
+            case "comparison" -> {
+                String[] keywords = extractComparisonKeywords(userMessage);
+                List<Product> products1 = productRepository.findTop2ByNameContainingIgnoreCase(keywords[0]);
+                List<Product> products2 = productRepository.findTop2ByNameContainingIgnoreCase(keywords[1]);
+                if (!products1.isEmpty() && !products2.isEmpty()) {
+                    productIds.add(products1.get(0).getId());
+                    productIds.add(products2.get(0).getId());
+                    String prompt = buildComparisonPrompt(userMessage, products1, products2, promptTemplates.get("comparison"));
                     aiReply = openAiClient.ask(prompt);
+                } else {
+                    aiReply = "Dạ em chưa có đủ thông tin để so sánh giữa \"" + keywords[0] + "\" và \"" + keywords[1] + "\" ạ.";
+                }
+            }
+            case "feature_inquiry" -> {
+                List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
+                if (!matchedProducts.isEmpty()) {
+                    productIds = matchedProducts.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                    String featureType = detectFeatureType(userMessage);
+                    String prompt = buildFeatureInquiryPrompt(userMessage, matchedProducts, featureType, promptTemplates.get("feature_inquiry"));
+                    aiReply = openAiClient.ask(prompt);
+                } else {
+                    aiReply = "Dạ em chưa có thông tin chi tiết về tính năng của \"" + extractedKeyword + "\" ạ.";
+                }
+            }
+            case "budget_inquiry" -> {
+                BigDecimal maxPrice = extractBudget(userMessage);
+                List<Product> matchedProducts = productRepository.findBySellingPriceLessThan(maxPrice);
+                if (!matchedProducts.isEmpty()) {
+                    matchedProducts.sort((p1, p2) -> p2.getSellingPrice().compareTo(p1.getSellingPrice()));
+                    List<Product> topProducts = matchedProducts.stream()
+                            .limit(5)
+                            .collect(Collectors.toList());
+                    productIds = topProducts.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                    String prompt = buildBudgetInquiryPrompt(userMessage, topProducts, promptTemplates.get("budget_inquiry"));
+                    aiReply = openAiClient.ask(prompt);
+                } else {
+                    aiReply = "Hiện không có sản phẩm nào trong tầm giá " + formatCurrency(maxPrice) + " ạ.";
+                }
+            }
+            case "best_seller" -> {
+                List<Product> topSelling = productRepository.findTop3ByOrderBySoldQuantityDesc();
+                if (!topSelling.isEmpty()) {
+                    productIds = topSelling.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                    String prompt = buildBestSellerPrompt(userMessage, topSelling, promptTemplates.get("best_seller"));
+                    aiReply = openAiClient.ask(prompt);
+                } else {
+                    aiReply = """
+                    Dạ rất tiếc hiện tại em chưa có đủ dữ liệu về sản phẩm bán chạy 😭
+                    Nhưng shop có nhiều mẫu hot đang được khách hàng quan tâm. Anh/chị muốn tư vấn thêm không ạ? 📱
+                    """;
+                }
+            }
+            default -> {
+                List<Product> matchedProducts = findProductsByKeyword(extractedKeyword);
+                if (!matchedProducts.isEmpty()) {
+                    List<Product> topProducts = matchedProducts.stream()
+                            .limit(MAX_PRODUCTS_SUGGESTED)
+                            .collect(Collectors.toList());
+                    productIds = topProducts.stream()
+                            .map(Product::getId)
+                            .collect(Collectors.toList());
+                    String prompt = buildProductInquiryPrompt(userMessage, topProducts, isNewUser, promptTemplates.get("product_inquiry"));
+                    aiReply = openAiClient.ask(prompt);
+                } else {
+                    List<Product> similarProducts = findSimilarProducts(extractedKeyword);
+                    if (!similarProducts.isEmpty()) {
+                        List<Product> topSimilarProducts = similarProducts.stream()
+                                .limit(MAX_PRODUCTS_SUGGESTED)
+                                .collect(Collectors.toList());
+                        productIds = topSimilarProducts.stream()
+                                .map(Product::getId)
+                                .collect(Collectors.toList());
+                        String prompt = buildSimilarProductPrompt(userMessage, topSimilarProducts, extractedKeyword, promptTemplates.get("product_inquiry"));
+                        aiReply = openAiClient.ask(prompt);
+                    } else {
+                        String prompt = buildNoProductPrompt(userMessage, isNewUser, promptTemplates.get("product_inquiry"));
+                        aiReply = openAiClient.ask(prompt);
+                    }
                 }
             }
         }

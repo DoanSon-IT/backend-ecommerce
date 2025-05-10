@@ -7,6 +7,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -265,6 +266,7 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Cacheable(value = "userOrders", key = "#user.id + '-' + #page + '-' + #size + '-' + #sortField + '-' + #sortDirection + '-' + #status + '-' + #customerName + '-' + #orderId")
     public Page<OrderResponse> getPaginatedOrders(User user,
                                                   int page,
                                                   int size,

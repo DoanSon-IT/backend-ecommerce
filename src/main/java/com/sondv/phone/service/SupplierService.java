@@ -2,7 +2,10 @@ package com.sondv.phone.service;
 
 import com.sondv.phone.entity.Supplier;
 import com.sondv.phone.repository.SupplierRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +16,7 @@ public class SupplierService {
     @Autowired
     private SupplierRepository supplierRepository;
 
+    @Cacheable(value = "suppliers")
     public List<Supplier> getAllSuppliers() {
         return supplierRepository.findAll();
     }
@@ -29,10 +33,14 @@ public class SupplierService {
         return supplierRepository.findByEmailContainingIgnoreCase(email);
     }
 
-    public Supplier saveSupplier(Supplier supplier) {
+    @Transactional
+    @CacheEvict(value = "suppliers", allEntries = true)
+    public Supplier createSupplier(Supplier supplier) {
         return supplierRepository.save(supplier);
     }
 
+    @Transactional
+    @CacheEvict(value = "suppliers", allEntries = true)
     public Supplier updateSupplier(Long id, Supplier supplierDetails) {
         return supplierRepository.findById(id).map(supplier -> {
             supplier.setName(supplierDetails.getName());
@@ -43,6 +51,8 @@ public class SupplierService {
         }).orElseThrow(() -> new RuntimeException("Supplier not found"));
     }
 
+    @Transactional
+    @CacheEvict(value = "suppliers", allEntries = true)
     public void deleteSupplier(Long id) {
         supplierRepository.deleteById(id);
     }

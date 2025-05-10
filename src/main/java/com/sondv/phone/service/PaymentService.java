@@ -78,7 +78,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
         Payment payment = new Payment();
         payment.setOrder(order);
-        payment.setPaymentMethod(PaymentMethod.COD); // Mặc định là COD
+        payment.setPaymentMethod(PaymentMethod.COD);
         payment.setStatus(PaymentStatus.PENDING);
         payment.setCreatedAt(LocalDateTime.now());
         paymentRepository.save(payment);

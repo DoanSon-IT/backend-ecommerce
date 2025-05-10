@@ -7,6 +7,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -31,8 +34,10 @@ public class ProductService {
     private final InventoryRepository inventoryRepository;
     private final InventoryLogRepository inventoryLogRepository;
     private final CloudinaryService cloudinaryService;
+    private final PreloadCacheService preloadCacheService;
 
     // Lấy danh sách sản phẩm với phân trang
+    @Cacheable(value = "products", key = "#searchKeyword + '-' + #pageable.pageNumber + '-' + #pageable.pageSize", unless = "#result == null || #result.isEmpty()")
     public Page<ProductDTO> getAllProducts(String searchKeyword, Pageable pageable) {
         Page<Product> productPage;
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
@@ -44,12 +49,14 @@ public class ProductService {
     }
 
     // Lấy sản phẩm nổi bật
+    @Cacheable(value = "featuredProducts")
     public List<ProductDTO> getFeaturedProducts() {
         List<Product> products = productRepository.findByIsFeaturedTrue();
         return products.stream().map(this::mapToDTOWithDiscountCheck).collect(Collectors.toList());
     }
 
     // Lấy sản phẩm mới nhất
+    @Cacheable(value = "newestProducts", key = "#limit")
     public List<ProductDTO> getNewestProducts(int limit) {
         if (limit <= 0) {
             throw new IllegalArgumentException("Giới hạn phải lớn hơn 0");
@@ -61,6 +68,7 @@ public class ProductService {
     }
 
     // Lấy sản phẩm bán chạy
+    @Cacheable(value = "bestSellingProducts", key = "#limit")
     public List<ProductDTO> getBestSellingProducts(int limit) {
         if (limit <= 0) {
             throw new IllegalArgumentException("Giới hạn phải lớn hơn 0");
@@ -72,6 +80,7 @@ public class ProductService {
     }
 
     // Lấy sản phẩm theo ID
+    @Cacheable(value = "product", key = "#id", unless = "#result == null")
     public Optional<ProductDTO> getProductById(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID sản phẩm không hợp lệ");
@@ -161,6 +170,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductDTO createProduct(Product product) {
         logger.info("Creating product: {}", product.getName());
 
@@ -191,11 +201,12 @@ public class ProductService {
         inventoryLogRepository.save(log);
 
         saveProductImages(savedProduct, product.getImages());
-
+        preloadCacheService.preloadProductCache();
         return mapToDTOWithDiscountCheck(savedProduct);
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductDTO updateProduct(Long id, Product updatedProduct) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID sản phẩm không hợp lệ");
@@ -247,12 +258,13 @@ public class ProductService {
                 log.setTimestamp(LocalDateTime.now());
                 inventoryLogRepository.save(log);
             }
-
+            preloadCacheService.preloadProductCache();
             return mapToDTOWithDiscountCheck(savedProduct);
         }).orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại với ID: " + id));
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public void deleteProduct(Long id) {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID sản phẩm không hợp lệ");
@@ -262,6 +274,7 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Sản phẩm không tồn tại với ID: " + id));
 
         productRepository.deleteById(id);
+        preloadCacheService.preloadProductCache();
     }
 
     @Transactional

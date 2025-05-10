@@ -48,7 +48,7 @@ public class SupplierController {
     @PostMapping
     public Supplier createSupplier(@RequestBody Supplier supplier) {
         System.out.println("Creating supplier: " + supplier);
-        return supplierService.saveSupplier(supplier);
+        return supplierService.createSupplier(supplier);
     }
 
     @PutMapping("/{id}")

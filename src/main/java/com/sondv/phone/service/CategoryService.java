@@ -3,7 +3,10 @@ package com.sondv.phone.service;
 import com.sondv.phone.entity.Category;
 import com.sondv.phone.entity.Product;
 import com.sondv.phone.repository.CategoryRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
     // Lấy danh sách danh mục
+    @Cacheable(value = "categories")
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
     }
@@ -32,6 +36,8 @@ public class CategoryService {
     }
 
     // Thêm danh mục
+    @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public String createCategory(String name) {
         Optional<Category> existingCategory = categoryRepository.findByName(name);
         if (existingCategory.isPresent()) {
@@ -46,6 +52,8 @@ public class CategoryService {
     }
 
     // Cập nhật danh mục
+    @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public String updateCategory(Long id, String name) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
@@ -57,6 +65,8 @@ public class CategoryService {
     }
 
     // Xóa danh mục (Chỉ xóa nếu không có sản phẩm nào)
+    @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public String deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại!"));
