@@ -9,8 +9,7 @@ import org.springframework.web.servlet.config.annotation.*;
 public class WebConfig {
 
     @Bean
-    public WebMvcConfigurer corsConfigurer(@Value("${frontend.url:http://localhost:3000}") String frontendUrl) {
-
+    public WebMvcConfigurer corsConfigurer(@Value("${frontend.base-url:https://dsonmobile.shop}") String frontendUrl) {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {

@@ -7,6 +7,7 @@ import com.sondv.phone.repository.*;
 import com.sondv.phone.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -31,6 +32,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final CustomerRepository customerRepository;
+
+    @Value("${FRONTEND_BASE_URL}")
+    private String frontendBaseUrl;
 
     @Transactional
     public Map<String, String> register(AuthRequest request) {
@@ -139,7 +143,7 @@ public class AuthService {
         user.setResetToken(resetToken);
         userRepository.save(user);
 
-        String resetLink = "http://localhost:3000/auth/forgot-password?token=" + resetToken;
+        String resetLink = frontendBaseUrl + "/auth/forgot-password?token=" + resetToken;
 
         Map<String, String> placeholders = Map.of(
                 "fullName", user.getFullName(),
@@ -188,7 +192,7 @@ public class AuthService {
 
     private void sendVerificationEmail(User user, String token) {
         String subject = "Xác thực tài khoản của bạn - Doan Son Store";
-        String verifyLink = "http://localhost:3000/auth/verify?token=" + token;
+        String verifyLink = frontendBaseUrl + "/auth/verify?token=" + token;
 
         Map<String, String> placeholders = Map.of(
                 "fullName", user.getFullName(),

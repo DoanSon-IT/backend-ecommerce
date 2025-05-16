@@ -13,6 +13,7 @@ import com.sondv.phone.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,9 @@ public class FacebookOAuth2LoginSuccessHandler implements AuthenticationSuccessH
     private final RoleRepository roleRepository;
     private final CustomerRepository customerRepository;
     private final JwtUtil jwtUtil;
+
+    @Value("${FRONTEND_BASE_URL}")
+    private String frontendBaseUrl;
 
     @Override
     @Transactional
@@ -67,8 +71,8 @@ public class FacebookOAuth2LoginSuccessHandler implements AuthenticationSuccessH
 
         String target = Optional.ofNullable(request.getParameter("state"))
                 .filter(path -> path.startsWith("/"))
-                .map(path -> "http://localhost:3000" + path)
-                .orElse("http://localhost:3000/auth/oauth2/success");
+                .map(path -> frontendBaseUrl + path)
+                .orElse(frontendBaseUrl + "/auth/oauth2/success");
 
         response.sendRedirect(target);
     }
