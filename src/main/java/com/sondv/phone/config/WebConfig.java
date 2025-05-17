@@ -9,16 +9,19 @@ import org.springframework.web.servlet.config.annotation.*;
 public class WebConfig {
 
     @Bean
-    public WebMvcConfigurer corsConfigurer(@Value("${frontend.base-url:https://dsonmobile.shop}") String frontendUrl) {
+    public WebMvcConfigurer corsConfigurer(
+            @Value("${FRONTEND_BASE_URL:https://dsonmobile.shop}") String frontendUrl,
+            @Value("${FRONTEND_DEV_URL:http://localhost:3000}") String devUrl) {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(frontendUrl)
-                        .allowedMethods("*")
+                        .allowedOrigins(frontendUrl, devUrl, "http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .exposedHeaders("*")
-                        .allowCredentials(true);
+                        .exposedHeaders("Set-Cookie", "Authorization")
+                        .allowCredentials(true)
+                        .maxAge(3600);
             }
         };
     }

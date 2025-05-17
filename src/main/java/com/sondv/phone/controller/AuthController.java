@@ -12,6 +12,8 @@ import com.sondv.phone.validation.ValidationGroup;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +26,7 @@ import java.util.Optional;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final UserRepository userRepository;
@@ -39,10 +42,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request, HttpServletResponse response) {
+        logger.info("🔑 Login attempt for user: {}", request.getEmail());
         Map<String, String> tokens = authService.login(request);
 
-        CookieUtil.addCookie(response, "auth_token", tokens.get("accessToken"), 15 * 60);
-        CookieUtil.addCookie(response, "refresh_token", tokens.get("refreshToken"), 7 * 24 * 60 * 60);
+        logger.info("✅ Login successful, setting cookies");
+        CookieUtil.addCookie(response, "auth_token", tokens.get("accessToken"), 15 * 60, true, "None");
+        CookieUtil.addCookie(response, "refresh_token", tokens.get("refreshToken"), 7 * 24 * 60 * 60, true, "None");
 
         return ResponseEntity.ok(new AuthResponse("Đăng nhập thành công"));
     }
@@ -79,27 +84,40 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refreshToken(
             @CookieValue(value = "refresh_token", defaultValue = "") String refreshToken,
             HttpServletResponse response) {
+        logger.info("🔄 Refresh token request received");
+
         if (refreshToken.isEmpty()) {
+            logger.warn("⚠️ No refresh token found in request");
             return ResponseEntity.status(401).body(new AuthResponse("Không tìm thấy refresh token!"));
         }
+
         User user = userRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new ApiException(401, "Refresh Token không hợp lệ!"));
+                .orElseThrow(() -> {
+                    logger.error("❌ Invalid refresh token");
+                    return new ApiException(401, "Refresh Token không hợp lệ!");
+                });
 
         if (!jwtUtil.validateRefreshToken(refreshToken, user.getEmail())) {
+            logger.error("❌ Refresh token validation failed for user: {}", user.getEmail());
             throw new ApiException(401, "Refresh Token không hợp lệ hoặc đã hết hạn!");
         }
 
         String newAccessToken = jwtUtil.generateToken(user);
-        CookieUtil.addCookie(response, "auth_token", newAccessToken, 15 * 60);
+        logger.info("✅ Generated new access token for user: {}", user.getEmail());
+
+        CookieUtil.addCookie(response, "auth_token", newAccessToken, 15 * 60, true, "None");
         return ResponseEntity.ok(new AuthResponse("Làm mới Access Token thành công!"));
     }
 
     @GetMapping("/check-cookie")
     public ResponseEntity<AuthResponse> checkCookie(HttpServletRequest request) {
+        logger.info("🔍 Checking auth cookie");
         Optional<String> tokenOpt = CookieUtil.getCookieValue(request, "auth_token");
         if (tokenOpt.isPresent()) {
+            logger.info("✅ Auth cookie found");
             return ResponseEntity.ok(new AuthResponse("Cookie tồn tại"));
         } else {
+            logger.warn("⚠️ No auth cookie found");
             return ResponseEntity.ok(new AuthResponse("Không tìm thấy cookie auth_token"));
         }
     }

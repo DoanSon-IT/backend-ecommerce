@@ -54,7 +54,8 @@ public class AdminService {
             String dateKey = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
             LocalDateTime dateStart = date.atStartOfDay();
             LocalDateTime dateEnd = date.atTime(23, 59, 59);
-            List<Order> dailyOrders = orderRepository.findByCreatedAtBetweenAndStatus(dateStart, dateEnd, OrderStatus.COMPLETED);
+            List<Order> dailyOrders = orderRepository.findByCreatedAtBetweenAndStatus(dateStart, dateEnd,
+                    OrderStatus.COMPLETED);
             BigDecimal dailyRevenue = calculateTotalRevenue(dailyOrders);
             revenueByTime.put(dateKey, dailyRevenue != null ? dailyRevenue : BigDecimal.ZERO);
             ordersByTime.put(dateKey, (long) dailyOrders.size());
@@ -85,7 +86,8 @@ public class AdminService {
     }
 
     public BigDecimal calculateTotalRevenue(List<Order> orders) {
-        if (orders == null || orders.isEmpty()) return BigDecimal.ZERO;
+        if (orders == null || orders.isEmpty())
+            return BigDecimal.ZERO;
         return orders.stream()
                 .map(order -> order.getOrderDetails().stream()
                         .map(detail -> detail.getPrice().multiply(BigDecimal.valueOf(detail.getQuantity())))
@@ -114,8 +116,7 @@ public class AdminService {
         return Arrays.stream(com.sondv.phone.entity.OrderStatus.values())
                 .collect(Collectors.toMap(
                         Enum::name,
-                        status -> orderRepository.countByStatus(status)
-                ));
+                        status -> orderRepository.countByStatus(status)));
     }
 
     public List<Map<String, Object>> getLowStockProducts(int threshold) {
@@ -124,7 +125,16 @@ public class AdminService {
                     Map<String, Object> map = new HashMap<>();
                     map.put("productId", p.getId());
                     map.put("name", p.getName());
-                    map.put("stock", p.getStock());
+                    map.put("category", p.getCategory() != null ? p.getCategory().getName() : null);
+                    // Lấy tồn kho hiện tại từ entity Inventory nếu có, nếu không lấy từ trường
+                    // stock
+                    int currentStock = p.getInventory() != null ? p.getInventory().getQuantity()
+                            : (p.getStock() != null ? p.getStock() : 0);
+                    map.put("currentStock", currentStock);
+                    // Lấy mức tối thiểu từ entity Inventory nếu có, nếu không mặc định 5
+                    int minStock = p.getInventory() != null ? p.getInventory().getMinQuantity() : 5;
+                    map.put("minStock", minStock);
+                    map.put("needToImport", Math.max(0, minStock - currentStock));
                     return map;
                 })
                 .collect(Collectors.toList());
@@ -136,7 +146,8 @@ public class AdminService {
 
         for (User user : users) {
             String region = detectRegion(user.getAddress());
-            if (region == null || region.equals("null")) continue;
+            if (region == null || region.equals("null"))
+                continue;
 
             // Chuyển tên region về định dạng camelCase frontend đang dùng
             String normalizedRegion = switch (region) {
@@ -151,7 +162,8 @@ public class AdminService {
     }
 
     private String normalizeVietnamese(String input) {
-        if (input == null) return null;
+        if (input == null)
+            return null;
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
         return normalized.replaceAll("\\p{M}", "") // xoá dấu
                 .replaceAll("đ", "d")
@@ -159,7 +171,8 @@ public class AdminService {
     }
 
     private String detectRegion(String address) {
-        if (address == null || address.isEmpty()) return "foreign";
+        if (address == null || address.isEmpty())
+            return "foreign";
 
         address = normalizeVietnamese(address);
 
@@ -191,10 +204,18 @@ public class AdminService {
                 "dong thap", "an giang", "kien giang", "hau giang", "soc trang", "bac lieu", "ca mau"
         };
 
-        for (String p : north) if (address.contains(p)) return "north";
-        for (String p : central) if (address.contains(p)) return "central";
-        for (String p : centralHighlands) if (address.contains(p)) return "centralHighlands";
-        for (String p : south) if (address.contains(p)) return "south";
+        for (String p : north)
+            if (address.contains(p))
+                return "north";
+        for (String p : central)
+            if (address.contains(p))
+                return "central";
+        for (String p : centralHighlands)
+            if (address.contains(p))
+                return "centralHighlands";
+        for (String p : south)
+            if (address.contains(p))
+                return "south";
 
         return "unknown";
     }

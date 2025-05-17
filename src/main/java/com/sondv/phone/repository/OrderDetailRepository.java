@@ -14,40 +14,42 @@ import java.util.List;
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, Long> {
 
     @Query("""
-    SELECT new com.sondv.phone.dto.TopProductDTO(
-        od.product.id,
-        od.product.name,
-        SUM(od.quantity)
-    )
-    FROM OrderDetail od
-    WHERE od.order.createdAt BETWEEN :startDate AND :endDate
-      AND od.order.status = com.sondv.phone.entity.OrderStatus.COMPLETED
-    GROUP BY od.product.id, od.product.name
-    ORDER BY SUM(od.quantity) DESC
-    """)
+            SELECT new com.sondv.phone.dto.TopProductDTO(
+                od.product.id,
+                od.product.name,
+                od.product.category.name,
+                SUM(od.quantity),
+                SUM(od.price * od.quantity),
+                SUM((od.price - od.product.costPrice) * od.quantity)
+            )
+            FROM OrderDetail od
+            WHERE od.order.createdAt BETWEEN :startDate AND :endDate
+              AND od.order.status = com.sondv.phone.entity.OrderStatus.COMPLETED
+            GROUP BY od.product.id, od.product.name, od.product.category.name
+            ORDER BY SUM(od.quantity) DESC
+            """)
     List<TopProductDTO> findTopSellingProducts(
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
-            Pageable pageable
-    );
+            Pageable pageable);
 
     @Query("""
-        SELECT new com.sondv.phone.dto.CategoryRevenueDTO(
-            p.category.name,
-            SUM(od.price * od.quantity),
-            COUNT(DISTINCT o.id),
-            COUNT(DISTINCT p.id)
-        )
-        FROM OrderDetail od
-        JOIN od.product p
-        JOIN od.order o
-        WHERE o.createdAt BETWEEN :start AND :end
-        AND o.status = 'COMPLETED'
-        GROUP BY p.category.name
-    """)
+                SELECT new com.sondv.phone.dto.CategoryRevenueDTO(
+                    p.category.name,
+                    SUM(od.price * od.quantity),
+                    COUNT(DISTINCT o.id),
+                    COUNT(DISTINCT p.id),
+                    SUM((od.price - p.costPrice) * od.quantity)
+                )
+                FROM OrderDetail od
+                JOIN od.product p
+                JOIN od.order o
+                WHERE o.createdAt BETWEEN :start AND :end
+                AND o.status = 'COMPLETED'
+                GROUP BY p.category.name
+            """)
     List<CategoryRevenueDTO> getRevenueByCategory(
             @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end
-    );
+            @Param("end") LocalDateTime end);
 
 }

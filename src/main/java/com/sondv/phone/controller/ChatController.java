@@ -63,6 +63,12 @@ public class ChatController {
         messageService.markAsRead(messageId);
     }
 
+    @PostMapping("/mark-conversation-as-read")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public void markConversationAsRead(@RequestParam Long customerId) {
+        messageService.markConversationAsRead(customerId);
+    }
+
     private String extractEmailFromToken(String token) {
         return jwtUtil.extractUsername(token);
     }
@@ -71,13 +77,7 @@ public class ChatController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public Message sendToCustomer(@RequestParam Long receiverId, @RequestParam String message) {
         System.out.println("✅ Gửi tới ID: " + receiverId + " | Nội dung: " + message);
-        List<Message> history = messageService.getChatHistory(receiverId);
-        history.forEach(msg -> {
-            if (msg.getSenderId().equals(receiverId) && !msg.isRead()) {
-                msg.setRead(true);
-                messageService.markAsRead(msg.getId());
-            }
-        });
+        messageService.markConversationAsRead(receiverId);
         return messageService.saveMessage(0L, receiverId, message);
     }
 

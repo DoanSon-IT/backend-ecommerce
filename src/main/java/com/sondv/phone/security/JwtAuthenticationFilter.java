@@ -30,6 +30,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        // Cho phép GET request đến products và categories mà không cần xác thực
+        if (method.equals("GET") && (path.startsWith("/api/products") ||
+                path.startsWith("/api/categories") ||
+                path.startsWith("/products/") ||
+                path.startsWith("/api/discounts/active") ||
+                path.startsWith("/api/discounts/spin"))) {
+            return true;
+        }
+
         return path.startsWith("/api/auth/") ||
                 path.startsWith("/login/oauth2/") ||
                 path.startsWith("/oauth2/") ||
@@ -70,8 +81,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             return new JwtException("User không tồn tại!");
                         });
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(user, null,
+                        user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 logger.info("✅ Đã xác thực user: {}", email);
             }

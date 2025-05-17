@@ -45,7 +45,7 @@ public class UserController {
 
         if (auth == null || !auth.isAuthenticated() || auth.getPrincipal().equals("anonymousUser")) {
             logger.warn("No authenticated user found");
-            return ResponseEntity.status(403).body(null);
+            return ResponseEntity.ok(null); // ✅ Trả về null thay vì lỗi 403
         }
 
         String email = ((User) auth.getPrincipal()).getEmail();
@@ -138,9 +138,9 @@ public class UserController {
     public ResponseEntity<Page<UserResponseDTO>> getUsers(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "") int page,
-                    @RequestParam(defaultValue = "10") int size,
-    @RequestParam(defaultValue = "id") String sortBy,
-    @RequestParam(defaultValue = "asc") String sortDir) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
 
         Pageable pageable = PageRequest.of(page, size);
 

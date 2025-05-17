@@ -40,7 +40,8 @@ public class MessageService {
         history.forEach(msg -> {
             if (msg.getSenderId() != 0) { // Chỉ lấy avatar cho khách hàng, không lấy cho admin (senderId = 0)
                 User user = userRepository.findById(msg.getSenderId())
-                        .orElseThrow(() -> new IllegalArgumentException("User không tồn tại với ID: " + msg.getSenderId()));
+                        .orElseThrow(
+                                () -> new IllegalArgumentException("User không tồn tại với ID: " + msg.getSenderId()));
                 msg.setSenderAvatarUrl(user.getAvatarUrl());
             }
         });
@@ -73,5 +74,15 @@ public class MessageService {
             unreadCount.put(user.getId(), count);
         }
         return unreadCount;
+    }
+
+    public void markConversationAsRead(Long customerId) {
+        List<Message> messages = messageRepository.findConversation(customerId, 0L);
+        messages.forEach(msg -> {
+            if (!msg.isRead() && msg.getSenderId().equals(customerId)) {
+                msg.setRead(true);
+                messageRepository.save(msg);
+            }
+        });
     }
 }

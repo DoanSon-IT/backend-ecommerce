@@ -12,4 +12,5 @@ public class CategoryRevenueDTO {
     private BigDecimal totalRevenue;
     private Long orderCount;
     private Long productCount;
+    private BigDecimal totalProfit;
 }

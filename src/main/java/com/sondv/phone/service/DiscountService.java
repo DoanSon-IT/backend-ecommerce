@@ -89,6 +89,10 @@ public class DiscountService {
             throw new IllegalArgumentException("Mã giảm giá đã hết hạn.");
         }
 
+        if (discount.isUsed()) {
+            throw new IllegalArgumentException("Mã giảm giá đã được sử dụng.");
+        }
+
         BigDecimal originalTotal = BigDecimal.ZERO;
 
         for (DiscountApplyRequest.OrderItemRequest item : request.getItems()) {
@@ -108,8 +112,7 @@ public class DiscountService {
 
                 if (isDiscountActive) {
                     throw new IllegalArgumentException(
-                            "Sản phẩm \"" + product.getName() + "\" đang khuyến mãi. Không thể áp thêm mã giảm giá."
-                    );
+                            "Sản phẩm \"" + product.getName() + "\" đang khuyến mãi. Không thể áp thêm mã giảm giá.");
                 }
             }
 
